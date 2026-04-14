@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">Smart PESU Notification Filter</string>
+    <string name="service_label">PESU Notification Listener</string>
+    <string name="important_update_title">Important Update</string>
+    <string name="test_notification_title">Testing Mode</string>
+    <string name="channel_name">Important PESU Updates</string>
+    <string name="channel_description">Filtered high priority notifications from PESU</string>
+    <string name="notification_access_disabled">Notification access is not enabled yet.</string>
+    <string name="notification_access_enabled">Notification access is enabled.</string>
+    <string name="enable_access">Enable Notification Access</string>
+    <string name="manage_access">Manage Notification Access</string>
+    <string name="filter_categories">Filter Categories</string>
+    <string name="exams_label">Exams</string>
+    <string name="assignments_label">Assignments</string>
+    <string name="events_label">Events</string>
+    <string name="general_label">General</string>
+    <string name="testing_mode">Testing Mode</string>
+    <string name="send_exam_test">Send Exam Test Notification</string>
+    <string name="send_event_test">Send Event Test Notification</string>
+    <string name="open_hidden_log">Open Hidden Log</string>
+    <string name="hidden_log_title">Ignored Notifications Log</string>
+    <string name="status_shown">Shown to user</string>
+    <string name="status_hidden">Hidden by filter</string>
+    <string name="notification_permission_denied">Notification posting permission was denied.</string>
+    <string name="test_mode_filtered">This test notification was filtered and saved to the log.</string>
+    <string name="test_mode_success">Matched an enabled category and was shown.</string>
+</resources>

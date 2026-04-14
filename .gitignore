@@ -1,0 +1,41 @@
+# Gradle
+.gradle/
+build/
+*/build/
+
+# Local configuration
+local.properties
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+
+# Android Studio / IntelliJ caches
+.cxx/
+captures/
+externalNativeBuild/
+
+# Generated files
+*.apk
+*.aab
+*.ap_
+*.dex
+output.json
+
+# Signing files
+*.jks
+*.keystore
+*.pem
+*.p12
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Kotlin / Java crash logs
+hs_err_pid*
+replay_pid*
