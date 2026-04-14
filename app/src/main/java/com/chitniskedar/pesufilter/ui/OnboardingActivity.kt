@@ -1,13 +1,10 @@
 package com.chitniskedar.pesufilter.ui
 
 import android.Manifest
-import android.content.ComponentName
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -15,8 +12,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.chitniskedar.pesufilter.R
 import com.chitniskedar.pesufilter.databinding.ActivityOnboardingBinding
-import com.chitniskedar.pesufilter.service.NotificationListener
 import com.chitniskedar.pesufilter.utils.PreferencesManager
+import com.chitniskedar.pesufilter.worker.AnnouncementScheduler
 
 class OnboardingActivity : AppCompatActivity() {
 
@@ -31,7 +28,7 @@ class OnboardingActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         preferencesManager = PreferencesManager(this)
-        if (preferencesManager.isOnboardingComplete() && !intent.getBooleanExtra(EXTRA_EDIT_MODE, false)) {
+        if (preferencesManager.isSetupDone() && !intent.getBooleanExtra(EXTRA_EDIT_MODE, false)) {
             startActivity(Intent(this, MainActivity::class.java))
             finish()
             return
@@ -42,8 +39,9 @@ class OnboardingActivity : AppCompatActivity() {
 
         setupPickers()
         restoreSavedProfile()
-        setupActions()
+        binding.buttonContinue.setOnClickListener { saveProfileAndContinue() }
         requestNotificationPermissionIfNeeded()
+        updatePermissionState()
     }
 
     override fun onResume() {
@@ -84,28 +82,26 @@ class OnboardingActivity : AppCompatActivity() {
 
         binding.spinnerBranch.setSelection(branchIndex)
         binding.spinnerSemester.setSelection(semesterIndex)
-    }
-
-    private fun setupActions() {
-        binding.buttonNotificationAccess.setOnClickListener {
-            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-        }
-
-        binding.buttonContinue.setOnClickListener {
-            saveProfileAndContinue()
-        }
+        binding.editBackendUrl.setText(preferencesManager.getBackendUrl())
+        binding.editBackendCookie.setText(preferencesManager.getBackendCookie().orEmpty())
     }
 
     private fun saveProfileAndContinue() {
         val branch = binding.spinnerBranch.selectedItem?.toString().orEmpty()
         val semester = binding.spinnerSemester.selectedItem?.toString()?.toIntOrNull()
+        val backendUrl = binding.editBackendUrl.text?.toString().orEmpty().trim()
+        val backendCookie = binding.editBackendCookie.text?.toString()?.trim().orEmpty()
 
-        if (branch.isBlank() || semester == null) {
+        if (branch.isBlank() || semester == null || backendUrl.isBlank()) {
             Toast.makeText(this, R.string.complete_profile_prompt, Toast.LENGTH_SHORT).show()
             return
         }
 
         preferencesManager.saveUserProfile(branch, semester)
+        preferencesManager.saveBackendUrl(backendUrl)
+        preferencesManager.saveBackendCookie(backendCookie.ifBlank { null })
+        AnnouncementScheduler.schedulePeriodic(this)
+        AnnouncementScheduler.enqueueImmediate(this)
         startActivity(Intent(this, MainActivity::class.java))
         finish()
     }
@@ -119,34 +115,12 @@ class OnboardingActivity : AppCompatActivity() {
     }
 
     private fun updatePermissionState() {
-        val listenerEnabled = isNotificationServiceEnabled(this)
         val notificationsEnabled = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
 
         binding.textPostPermissionStatus.text = getString(
             if (notificationsEnabled) R.string.post_notifications_granted else R.string.post_notifications_missing
         )
-
-        binding.buttonNotificationAccess.text = getString(
-            if (listenerEnabled) R.string.manage_access else R.string.enable_access
-        )
-        binding.textListenerStatus.text = getString(
-            if (listenerEnabled) {
-                R.string.notification_access_enabled
-            } else {
-                R.string.notification_access_disabled
-            }
-        )
-    }
-
-    private fun isNotificationServiceEnabled(context: Context): Boolean {
-        val componentName = ComponentName(context, NotificationListener::class.java)
-        val enabledListeners = Settings.Secure.getString(
-            context.contentResolver,
-            "enabled_notification_listeners"
-        ).orEmpty()
-
-        return enabledListeners.contains(componentName.flattenToString())
     }
 
     companion object {

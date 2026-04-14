@@ -1,31 +1,47 @@
 package com.chitniskedar.pesufilter.ui
 
 import android.Manifest
-import android.content.ComponentName
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
+import android.os.Handler
+import android.os.Looper
+import android.view.LayoutInflater
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.google.android.material.materialswitch.MaterialSwitch
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.chitniskedar.pesufilter.R
-import com.chitniskedar.pesufilter.data.NotificationItem
 import com.chitniskedar.pesufilter.databinding.ActivityMainBinding
+import com.chitniskedar.pesufilter.databinding.ItemHiddenNotificationBinding
+import com.chitniskedar.pesufilter.model.Announcement
 import com.chitniskedar.pesufilter.utils.FilterManager
-import com.chitniskedar.pesufilter.utils.NotificationHelper
 import com.chitniskedar.pesufilter.utils.PreferencesManager
+import com.chitniskedar.pesufilter.worker.AnnouncementScheduler
+import com.google.android.material.materialswitch.MaterialSwitch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var preferencesManager: PreferencesManager
     private lateinit var filterManager: FilterManager
-    private lateinit var notificationHelper: NotificationHelper
+    private lateinit var announcementAdapter: AnnouncementAdapter
+
+    private val refreshHandler = Handler(Looper.getMainLooper())
+    private val periodicRefresh = object : Runnable {
+        override fun run() {
+            AnnouncementScheduler.enqueueImmediate(this@MainActivity)
+            refreshUi()
+            refreshHandler.postDelayed(this, FOREGROUND_REFRESH_INTERVAL_MS)
+        }
+    }
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -37,8 +53,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         preferencesManager = PreferencesManager(this)
-        if (!preferencesManager.isOnboardingComplete()) {
+        if (!preferencesManager.isSetupDone()) {
             startActivity(Intent(this, OnboardingActivity::class.java))
             finish()
             return
@@ -48,24 +65,36 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         filterManager = FilterManager(preferencesManager)
-        notificationHelper = NotificationHelper(this)
+        announcementAdapter = AnnouncementAdapter()
+        binding.recyclerAnnouncements.layoutManager = LinearLayoutManager(this)
+        binding.recyclerAnnouncements.adapter = announcementAdapter
 
-        bindProfileSummary()
+        AnnouncementScheduler.schedulePeriodic(this)
         setupCategoryToggles()
         setupButtons()
         requestNotificationPermissionIfNeeded()
+        refreshUi()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        refreshHandler.post(periodicRefresh)
+    }
+
+    override fun onStop() {
+        refreshHandler.removeCallbacks(periodicRefresh)
+        super.onStop()
     }
 
     override fun onResume() {
         super.onResume()
-        bindProfileSummary()
-        updateAccessStatus()
+        refreshUi()
     }
 
     private fun setupCategoryToggles() {
         bindToggle(binding.switchExams, PreferencesManager.CATEGORY_EXAM)
         bindToggle(binding.switchAssignments, PreferencesManager.CATEGORY_ASSIGNMENT)
-        bindToggle(binding.switchEvents, PreferencesManager.CATEGORY_EVENT)
+        bindToggle(binding.switchInternships, PreferencesManager.CATEGORY_INTERNSHIP)
         bindToggle(binding.switchGeneral, PreferencesManager.CATEGORY_GENERAL)
     }
 
@@ -73,14 +102,11 @@ class MainActivity : AppCompatActivity() {
         toggle.isChecked = preferencesManager.isCategoryEnabled(category)
         toggle.setOnCheckedChangeListener { _, isChecked ->
             preferencesManager.setCategoryEnabled(category, isChecked)
+            refreshUi()
         }
     }
 
     private fun setupButtons() {
-        binding.buttonEnableAccess.setOnClickListener {
-            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-        }
-
         binding.buttonEditProfile.setOnClickListener {
             startActivity(
                 Intent(this, OnboardingActivity::class.java).apply {
@@ -89,51 +115,31 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
+        binding.buttonRefreshNow.setOnClickListener {
+            AnnouncementScheduler.enqueueImmediate(this)
+            Toast.makeText(this, R.string.refresh_started, Toast.LENGTH_SHORT).show()
+            refreshUi()
+        }
+
         binding.buttonOpenLog.setOnClickListener {
             startActivity(Intent(this, HiddenLogActivity::class.java))
         }
-
-        binding.buttonSendExamTest.setOnClickListener {
-            simulateNotification("PESU Alerts", "CSE Sem 1 Internal Exam Tomorrow")
-        }
-
-        binding.buttonSendEventTest.setOnClickListener {
-            simulateNotification("PESU Events", "Workshop for all branches")
-        }
     }
 
-    private fun simulateNotification(title: String, text: String) {
-        val timestamp = System.currentTimeMillis()
-        val result = filterManager.process(
-            packageName = FAKE_PESU_PACKAGE,
-            title = title,
-            text = text
-        )
+    private fun refreshUi() {
+        bindProfileSummary()
+        bindSyncStatus()
 
-        val message = "$title - $text"
-        val category = result.category ?: PreferencesManager.CATEGORY_GENERAL
-
-        if (result.shouldShow) {
-            notificationHelper.showImportantNotification(message, timestamp)
-            preferencesManager.saveNotification(
-                NotificationItem(
-                    text = message,
-                    category = category,
-                    timestamp = timestamp,
-                    isShown = true
-                )
-            )
-        } else {
-            preferencesManager.saveNotification(
-                NotificationItem(
-                    text = message,
-                    category = category,
-                    timestamp = timestamp,
-                    isShown = false
-                )
-            )
-            Toast.makeText(this, R.string.test_mode_filtered, Toast.LENGTH_SHORT).show()
+        val announcements = preferencesManager.getSavedAnnouncements()
+        val filteredAnnouncements = announcements.filter { announcement ->
+            filterManager.shouldShow("${announcement.title} ${announcement.date}")
         }
+
+        announcementAdapter.submitList(filteredAnnouncements)
+        binding.textEmptyState.text = getString(
+            if (filteredAnnouncements.isEmpty()) R.string.no_announcements_found
+            else R.string.recent_announcements
+        )
     }
 
     private fun bindProfileSummary() {
@@ -142,14 +148,15 @@ class MainActivity : AppCompatActivity() {
         binding.textProfileSummary.text = getString(R.string.profile_summary, branch, semester)
     }
 
-    private fun updateAccessStatus() {
-        val enabled = isNotificationServiceEnabled(this)
-        binding.textAccessStatus.text = getString(
-            if (enabled) R.string.notification_access_enabled else R.string.notification_access_disabled
-        )
-        binding.buttonEnableAccess.text = getString(
-            if (enabled) R.string.manage_access else R.string.enable_access
-        )
+    private fun bindSyncStatus() {
+        val lastSync = preferencesManager.getLastSyncTimestamp()
+        val lastError = preferencesManager.getLastSyncError()
+
+        binding.textSyncStatus.text = when {
+            lastError != null -> getString(R.string.last_sync_error, lastError)
+            lastSync != null -> getString(R.string.last_sync_success, DATE_FORMAT.format(Date(lastSync)))
+            else -> getString(R.string.no_sync_yet)
+        }
     }
 
     private fun requestNotificationPermissionIfNeeded() {
@@ -160,17 +167,45 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun isNotificationServiceEnabled(context: Context): Boolean {
-        val componentName = ComponentName(context, com.chitniskedar.pesufilter.service.NotificationListener::class.java)
-        val enabledListeners = Settings.Secure.getString(
-            context.contentResolver,
-            "enabled_notification_listeners"
-        ).orEmpty()
+    private class AnnouncementAdapter : RecyclerView.Adapter<AnnouncementAdapter.AnnouncementViewHolder>() {
+        private val items = mutableListOf<Announcement>()
 
-        return enabledListeners.contains(componentName.flattenToString())
+        fun submitList(data: List<Announcement>) {
+            items.clear()
+            items.addAll(data)
+            notifyDataSetChanged()
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AnnouncementViewHolder {
+            val binding = ItemHiddenNotificationBinding.inflate(
+                LayoutInflater.from(parent.context),
+                parent,
+                false
+            )
+            return AnnouncementViewHolder(binding)
+        }
+
+        override fun onBindViewHolder(holder: AnnouncementViewHolder, position: Int) {
+            holder.bind(items[position])
+        }
+
+        override fun getItemCount(): Int = items.size
+
+        class AnnouncementViewHolder(
+            private val binding: ItemHiddenNotificationBinding
+        ) : RecyclerView.ViewHolder(binding.root) {
+
+            fun bind(item: Announcement) {
+                binding.textMessage.text = item.title
+                binding.textCategory.text = item.date
+                binding.textTimestamp.text = item.link ?: itemView.context.getString(R.string.no_attachment_link)
+                binding.textShownStatus.text = itemView.context.getString(R.string.filtered_for_you)
+            }
+        }
     }
 
     companion object {
-        private const val FAKE_PESU_PACKAGE = "com.pesuacademy.app"
+        private const val FOREGROUND_REFRESH_INTERVAL_MS = 5 * 60 * 1000L
+        private val DATE_FORMAT = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
     }
 }

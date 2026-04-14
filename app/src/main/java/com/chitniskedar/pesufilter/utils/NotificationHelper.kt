@@ -1,17 +1,18 @@
 package com.chitniskedar.pesufilter.utils
 
 import android.Manifest
-import android.app.PendingIntent
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.content.Intent
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.chitniskedar.pesufilter.R
+import com.chitniskedar.pesufilter.model.Announcement
 import com.chitniskedar.pesufilter.ui.MainActivity
 
 class NotificationHelper(private val context: Context) {
@@ -22,7 +23,7 @@ class NotificationHelper(private val context: Context) {
         createNotificationChannel()
     }
 
-    fun showImportantNotification(text: String, timestamp: Long) {
+    fun showAnnouncementNotification(announcement: Announcement) {
         if (!canPostNotifications()) {
             return
         }
@@ -36,40 +37,30 @@ class NotificationHelper(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val body = buildString {
+            append(announcement.date)
+            announcement.link?.takeIf { it.isNotBlank() }?.let {
+                if (isNotBlank()) {
+                    append("\n")
+                }
+                append(it)
+            }
+        }.ifBlank { context.getString(R.string.no_attachment_link) }
+
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_filter)
-            .setContentTitle(context.getString(R.string.important_update_title))
-            .setContentText(text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setContentTitle(announcement.title)
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(contentIntent)
             .setAutoCancel(true)
             .build()
 
-        notificationManager.notify((timestamp and 0x7FFFFFFF).toInt(), notification)
-    }
-
-    fun showTestNotification(text: String) {
-        if (!canPostNotifications()) {
-            return
-        }
-
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification_filter)
-            .setContentTitle(context.getString(R.string.test_notification_title))
-            .setContentText(text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .setCategory(NotificationCompat.CATEGORY_STATUS)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setAutoCancel(true)
-            .build()
-
-        notificationManager.notify(((System.currentTimeMillis() + 99L) and 0x7FFFFFFF).toInt(), notification)
+        notificationManager.notify((System.currentTimeMillis() and 0x7FFFFFFF).toInt(), notification)
     }
 
     private fun canPostNotifications(): Boolean {
@@ -101,6 +92,6 @@ class NotificationHelper(private val context: Context) {
     }
 
     companion object {
-        const val CHANNEL_ID = "pesuflow_important_updates_v2"
+        const val CHANNEL_ID = "pesuflow_announcements"
     }
 }
