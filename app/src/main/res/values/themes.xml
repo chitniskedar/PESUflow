@@ -1,10 +1,14 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Theme.SmartPESUNotificationFilter" parent="Theme.Material3.Light.NoActionBar">
+    <style name="Theme.PESUflow" parent="Theme.Material3.Dark.NoActionBar">
         <item name="colorPrimary">@color/blue_primary</item>
         <item name="colorPrimaryContainer">@color/blue_dark</item>
-        <item name="android:statusBarColor" tools:targetApi="l">@color/blue_dark</item>
+        <item name="colorSecondary">@color/teal_accent</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@color/surface</item>
+        <item name="android:navigationBarColor">@color/surface</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
         <item name="colorSurface">@color/surface</item>
+        <item name="colorSurfaceVariant">@color/surface_variant</item>
         <item name="android:colorBackground">@color/surface</item>
     </style>
 </resources>

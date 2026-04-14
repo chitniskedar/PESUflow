@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SmartPESUNotificationFilter"
+rootProject.name = "PESUflow"
 include(":app")

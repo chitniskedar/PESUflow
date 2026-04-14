@@ -1,5 +1,7 @@
 <resources>
-    <color name="blue_primary">#0F6CBD</color>
-    <color name="blue_dark">#0A4D86</color>
-    <color name="surface">#F7F9FC</color>
+    <color name="blue_primary">#67B3FF</color>
+    <color name="blue_dark">#0F4C81</color>
+    <color name="teal_accent">#55D6BE</color>
+    <color name="surface">#09131F</color>
+    <color name="surface_variant">#122235</color>
 </resources>

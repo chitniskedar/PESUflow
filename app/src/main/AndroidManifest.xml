@@ -9,10 +9,14 @@
         android:label="@string/app_name"
         android:roundIcon="@drawable/ic_notification_filter"
         android:supportsRtl="true"
-        android:theme="@style/Theme.SmartPESUNotificationFilter">
+        android:theme="@style/Theme.PESUflow">
 
         <activity
             android:name=".ui.HiddenLogActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.OnboardingActivity"
             android:exported="false" />
 
         <activity

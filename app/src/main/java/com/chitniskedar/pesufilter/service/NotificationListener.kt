@@ -53,8 +53,16 @@ class NotificationListener : NotificationListenerService() {
         val category = result.category ?: PreferencesManager.CATEGORY_GENERAL
 
         if (result.shouldShow) {
-            notificationHelper.showImportantNotification(message, timestamp)
+            preferencesManager.saveNotification(
+                NotificationItem(
+                    text = message,
+                    category = category,
+                    timestamp = timestamp,
+                    isShown = true
+                )
+            )
         } else {
+            cancelNotification(sbn.key)
             preferencesManager.saveNotification(
                 NotificationItem(
                     text = message,

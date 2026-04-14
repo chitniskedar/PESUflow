@@ -13,6 +13,30 @@ class PreferencesManager(context: Context) {
         return prefs.getBoolean(category, true)
     }
 
+    fun isOnboardingComplete(): Boolean {
+        return prefs.getBoolean(KEY_ONBOARDING_COMPLETE, false)
+    }
+
+    fun saveUserProfile(branch: String, semester: Int) {
+        prefs.edit()
+            .putString(KEY_BRANCH, branch)
+            .putInt(KEY_SEMESTER, semester)
+            .putBoolean(KEY_ONBOARDING_COMPLETE, true)
+            .apply()
+    }
+
+    fun getSelectedBranch(): String? {
+        return prefs.getString(KEY_BRANCH, null)
+    }
+
+    fun getSelectedSemester(): Int? {
+        return if (prefs.contains(KEY_SEMESTER)) {
+            prefs.getInt(KEY_SEMESTER, 1)
+        } else {
+            null
+        }
+    }
+
     fun setCategoryEnabled(category: String, enabled: Boolean) {
         prefs.edit().putBoolean(category, enabled).apply()
     }
@@ -70,5 +94,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_CATEGORY = "category"
         private const val KEY_TIMESTAMP = "timestamp"
         private const val KEY_IS_SHOWN = "is_shown"
+        private const val KEY_BRANCH = "branch"
+        private const val KEY_SEMESTER = "semester"
+        private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
     }
 }

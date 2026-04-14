@@ -37,13 +37,20 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        preferencesManager = PreferencesManager(this)
+        if (!preferencesManager.isOnboardingComplete()) {
+            startActivity(Intent(this, OnboardingActivity::class.java))
+            finish()
+            return
+        }
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        preferencesManager = PreferencesManager(this)
         filterManager = FilterManager(preferencesManager)
         notificationHelper = NotificationHelper(this)
 
+        bindProfileSummary()
         setupCategoryToggles()
         setupButtons()
         requestNotificationPermissionIfNeeded()
@@ -51,6 +58,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        bindProfileSummary()
         updateAccessStatus()
     }
 
@@ -71,6 +79,14 @@ class MainActivity : AppCompatActivity() {
     private fun setupButtons() {
         binding.buttonEnableAccess.setOnClickListener {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        }
+
+        binding.buttonEditProfile.setOnClickListener {
+            startActivity(
+                Intent(this, OnboardingActivity::class.java).apply {
+                    putExtra(OnboardingActivity.EXTRA_EDIT_MODE, true)
+                }
+            )
         }
 
         binding.buttonOpenLog.setOnClickListener {
@@ -99,7 +115,6 @@ class MainActivity : AppCompatActivity() {
 
         if (result.shouldShow) {
             notificationHelper.showImportantNotification(message, timestamp)
-            notificationHelper.showTestNotification(getString(R.string.test_mode_success))
             preferencesManager.saveNotification(
                 NotificationItem(
                     text = message,
@@ -119,6 +134,12 @@ class MainActivity : AppCompatActivity() {
             )
             Toast.makeText(this, R.string.test_mode_filtered, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun bindProfileSummary() {
+        val branch = preferencesManager.getSelectedBranch().orEmpty()
+        val semester = preferencesManager.getSelectedSemester()?.toString().orEmpty()
+        binding.textProfileSummary.text = getString(R.string.profile_summary, branch, semester)
     }
 
     private fun updateAccessStatus() {

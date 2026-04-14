@@ -1,8 +1,10 @@
 package com.chitniskedar.pesufilter.utils
 
 import android.Manifest
+import android.app.PendingIntent
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Intent
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -10,6 +12,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.chitniskedar.pesufilter.R
+import com.chitniskedar.pesufilter.ui.MainActivity
 
 class NotificationHelper(private val context: Context) {
 
@@ -24,12 +27,25 @@ class NotificationHelper(private val context: Context) {
             return
         }
 
+        val contentIntent = PendingIntent.getActivity(
+            context,
+            1001,
+            Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_filter)
             .setContentTitle(context.getString(R.string.important_update_title))
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setContentIntent(contentIntent)
             .setAutoCancel(true)
             .build()
 
@@ -46,7 +62,10 @@ class NotificationHelper(private val context: Context) {
             .setContentTitle(context.getString(R.string.test_notification_title))
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
             .build()
 
@@ -72,6 +91,9 @@ class NotificationHelper(private val context: Context) {
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
             description = context.getString(R.string.channel_description)
+            enableLights(true)
+            enableVibration(true)
+            lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
         }
 
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -79,6 +101,6 @@ class NotificationHelper(private val context: Context) {
     }
 
     companion object {
-        const val CHANNEL_ID = "important_pesu_updates"
+        const val CHANNEL_ID = "pesuflow_important_updates_v2"
     }
 }
