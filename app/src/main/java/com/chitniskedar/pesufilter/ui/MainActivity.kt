@@ -5,8 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
+import android.view.View
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.Toast
@@ -16,6 +15,7 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.chitniskedar.pesufilter.R
+import com.chitniskedar.pesufilter.auth.LoginActivity
 import com.chitniskedar.pesufilter.databinding.ActivityMainBinding
 import com.chitniskedar.pesufilter.databinding.ItemHiddenNotificationBinding
 import com.chitniskedar.pesufilter.model.Announcement
@@ -34,15 +34,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var filterManager: FilterManager
     private lateinit var announcementAdapter: AnnouncementAdapter
 
-    private val refreshHandler = Handler(Looper.getMainLooper())
-    private val periodicRefresh = object : Runnable {
-        override fun run() {
-            AnnouncementScheduler.enqueueImmediate(this@MainActivity)
-            refreshUi()
-            refreshHandler.postDelayed(this, FOREGROUND_REFRESH_INTERVAL_MS)
-        }
-    }
-
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -55,8 +46,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         preferencesManager = PreferencesManager(this)
-        if (!preferencesManager.isSetupDone()) {
-            startActivity(Intent(this, OnboardingActivity::class.java))
+        if (!routeIfNeeded()) {
             finish()
             return
         }
@@ -65,37 +55,70 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         filterManager = FilterManager(preferencesManager)
-        announcementAdapter = AnnouncementAdapter()
+        announcementAdapter = AnnouncementAdapter { announcement ->
+            getString(
+                R.string.filtered_with_priority,
+                filterManager.priorityFor(announcement.fullText)
+                    .name
+                    .lowercase()
+                    .replaceFirstChar { it.titlecase() }
+            )
+        }
         binding.recyclerAnnouncements.layoutManager = LinearLayoutManager(this)
         binding.recyclerAnnouncements.adapter = announcementAdapter
 
         AnnouncementScheduler.schedulePeriodic(this)
         setupCategoryToggles()
+        setupTestModeToggle()
         setupButtons()
         requestNotificationPermissionIfNeeded()
         refreshUi()
     }
 
-    override fun onStart() {
-        super.onStart()
-        refreshHandler.post(periodicRefresh)
-    }
-
-    override fun onStop() {
-        refreshHandler.removeCallbacks(periodicRefresh)
-        super.onStop()
-    }
-
     override fun onResume() {
         super.onResume()
+        if (!routeIfNeeded()) {
+            finish()
+            return
+        }
         refreshUi()
+    }
+
+    private fun routeIfNeeded(): Boolean {
+        return when {
+            !preferencesManager.hasActiveSession() -> {
+                startActivity(
+                    Intent(this, LoginActivity::class.java).apply {
+                        putExtra(LoginActivity.EXTRA_FORCE_RELOGIN, preferencesManager.isSetupDone())
+                    }
+                )
+                false
+            }
+
+            !preferencesManager.isSetupDone() -> {
+                startActivity(Intent(this, OnboardingActivity::class.java))
+                false
+            }
+
+            else -> true
+        }
     }
 
     private fun setupCategoryToggles() {
         bindToggle(binding.switchExams, PreferencesManager.CATEGORY_EXAM)
-        bindToggle(binding.switchAssignments, PreferencesManager.CATEGORY_ASSIGNMENT)
+        bindToggle(binding.switchAssignments, PreferencesManager.CATEGORY_NOTICE)
         bindToggle(binding.switchInternships, PreferencesManager.CATEGORY_INTERNSHIP)
         bindToggle(binding.switchGeneral, PreferencesManager.CATEGORY_GENERAL)
+    }
+
+    private fun setupTestModeToggle() {
+        binding.switchTestMode.isChecked = preferencesManager.isTestModeEnabled()
+        binding.switchTestMode.setOnCheckedChangeListener { _, isChecked ->
+            preferencesManager.setTestModeEnabled(isChecked)
+            if (isChecked) {
+                Toast.makeText(this, R.string.test_mode_enabled, Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun bindToggle(toggle: MaterialSwitch, category: String) {
@@ -116,8 +139,21 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.buttonRefreshNow.setOnClickListener {
-            AnnouncementScheduler.enqueueImmediate(this)
-            Toast.makeText(this, R.string.refresh_started, Toast.LENGTH_SHORT).show()
+            if (!preferencesManager.hasActiveSession()) {
+                startActivity(
+                    Intent(this, LoginActivity::class.java).apply {
+                        putExtra(LoginActivity.EXTRA_FORCE_RELOGIN, true)
+                    }
+                )
+                return@setOnClickListener
+            }
+            val forceTestMode = preferencesManager.isTestModeEnabled()
+            AnnouncementScheduler.enqueueImmediate(this, forceTestMode = forceTestMode)
+            Toast.makeText(
+                this,
+                if (forceTestMode) R.string.test_refresh_started else R.string.refresh_started,
+                Toast.LENGTH_SHORT
+            ).show()
             refreshUi()
         }
 
@@ -130,16 +166,13 @@ class MainActivity : AppCompatActivity() {
         bindProfileSummary()
         bindSyncStatus()
 
-        val announcements = preferencesManager.getSavedAnnouncements()
-        val filteredAnnouncements = announcements.filter { announcement ->
-            filterManager.shouldShow("${announcement.title} ${announcement.date}")
+        val filteredAnnouncements = preferencesManager.getSavedAnnouncements().filter { announcement ->
+            filterManager.shouldShow(announcement.fullText)
         }
 
         announcementAdapter.submitList(filteredAnnouncements)
-        binding.textEmptyState.text = getString(
-            if (filteredAnnouncements.isEmpty()) R.string.no_announcements_found
-            else R.string.recent_announcements
-        )
+        binding.textEmptyState.visibility = if (filteredAnnouncements.isEmpty()) View.VISIBLE else View.GONE
+        binding.textEmptyState.text = getString(R.string.no_announcements_found)
     }
 
     private fun bindProfileSummary() {
@@ -167,7 +200,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private class AnnouncementAdapter : RecyclerView.Adapter<AnnouncementAdapter.AnnouncementViewHolder>() {
+    private class AnnouncementAdapter(
+        private val priorityLabelProvider: (Announcement) -> String
+    ) : RecyclerView.Adapter<AnnouncementAdapter.AnnouncementViewHolder>() {
         private val items = mutableListOf<Announcement>()
 
         fun submitList(data: List<Announcement>) {
@@ -186,7 +221,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onBindViewHolder(holder: AnnouncementViewHolder, position: Int) {
-            holder.bind(items[position])
+            holder.bind(items[position], priorityLabelProvider(items[position]))
         }
 
         override fun getItemCount(): Int = items.size
@@ -195,17 +230,16 @@ class MainActivity : AppCompatActivity() {
             private val binding: ItemHiddenNotificationBinding
         ) : RecyclerView.ViewHolder(binding.root) {
 
-            fun bind(item: Announcement) {
+            fun bind(item: Announcement, statusText: String) {
                 binding.textMessage.text = item.title
                 binding.textCategory.text = item.date
-                binding.textTimestamp.text = item.link ?: itemView.context.getString(R.string.no_attachment_link)
-                binding.textShownStatus.text = itemView.context.getString(R.string.filtered_for_you)
+                binding.textTimestamp.text = item.fullText
+                binding.textShownStatus.text = statusText
             }
         }
     }
 
     companion object {
-        private const val FOREGROUND_REFRESH_INTERVAL_MS = 5 * 60 * 1000L
         private val DATE_FORMAT = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
     }
 }

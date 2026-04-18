@@ -10,6 +10,8 @@ class Fetcher {
     fun fetchHtml(url: String, cookie: String? = null): String {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
+            instanceFollowRedirects = true
+            useCaches = false
             connectTimeout = CONNECT_TIMEOUT_MS
             readTimeout = READ_TIMEOUT_MS
             setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")

@@ -17,6 +17,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".auth.LoginActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".ui.OnboardingActivity"
             android:exported="false" />
 

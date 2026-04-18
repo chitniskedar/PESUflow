@@ -5,7 +5,7 @@ class FilterManager(
 ) {
 
     fun shouldShow(text: String): Boolean {
-        val normalizedText = text.lowercase()
+        val normalizedText = normalize(text)
         val category = categorize(normalizedText)
 
         if (!preferencesManager.isCategoryEnabled(category)) {
@@ -16,101 +16,159 @@ class FilterManager(
             return false
         }
 
-        if (containsKeyword(normalizedText, BLOCKED_BRANCH_KEYWORDS)) {
-            val selectedBranchAliases = branchAliases(preferencesManager.getSelectedBranch())
-            if (selectedBranchAliases.none { alias -> normalizedText.contains(alias) }) {
-                return false
-            }
-        }
+        val branchAliases = branchAliases(preferencesManager.getSelectedBranch())
+        val branchMatch = branchAliases.any { alias -> containsPhrase(normalizedText, alias) }
+        val globalMatch = containsAnyPhrase(normalizedText, GLOBAL_PHRASES)
+        val importantMatch = containsAnyPhrase(normalizedText, ALWAYS_ALLOW_PHRASES)
+        val blockedMatch = containsAnyPhrase(normalizedText, BLOCKED_BRANCH_PHRASES)
 
-        val selectedBranchAliases = branchAliases(preferencesManager.getSelectedBranch())
-        val branchMatch = selectedBranchAliases.any { alias -> normalizedText.contains(alias) }
-        val globalMatch = containsKeyword(normalizedText, GLOBAL_KEYWORDS)
-        val importantMatch = containsKeyword(normalizedText, ALWAYS_ALLOW_KEYWORDS)
+        if (blockedMatch && !branchMatch && !globalMatch) {
+            return false
+        }
 
         return branchMatch || globalMatch || importantMatch
     }
 
     fun categorize(text: String): String {
+        val normalizedText = normalize(text)
         return when {
-            containsKeyword(text, EXAM_KEYWORDS) -> PreferencesManager.CATEGORY_EXAM
-            containsKeyword(text, ASSIGNMENT_KEYWORDS) -> PreferencesManager.CATEGORY_ASSIGNMENT
-            containsKeyword(text, INTERNSHIP_KEYWORDS) -> PreferencesManager.CATEGORY_INTERNSHIP
+            containsAnyPhrase(normalizedText, EXAM_PHRASES) -> PreferencesManager.CATEGORY_EXAM
+            containsAnyPhrase(normalizedText, INTERNSHIP_PHRASES) -> PreferencesManager.CATEGORY_INTERNSHIP
+            containsAnyPhrase(normalizedText, NOTICE_PHRASES) -> PreferencesManager.CATEGORY_NOTICE
             else -> PreferencesManager.CATEGORY_GENERAL
         }
     }
 
+    fun priorityFor(text: String): AnnouncementPriority {
+        val normalizedText = normalize(text)
+        return when {
+            containsAnyPhrase(normalizedText, EXAM_PRIORITY_PHRASES) -> AnnouncementPriority.HIGH
+            containsAnyPhrase(normalizedText, INTERNSHIP_PHRASES) -> AnnouncementPriority.MEDIUM
+            else -> AnnouncementPriority.LOW
+        }
+    }
+
     private fun matchesSemester(content: String): Boolean {
-        val semester = preferencesManager.getSelectedSemester() ?: return true
-        if (containsKeyword(content, GLOBAL_KEYWORDS)) {
+        val selectedSemester = preferencesManager.getSelectedSemester() ?: return true
+        if (containsAnyPhrase(content, GLOBAL_PHRASES)) {
             return true
         }
 
-        val selectedAliases = semesterAliases(semester)
-        if (selectedAliases.any { alias -> content.contains(alias) }) {
-            return true
+        val semestersMentioned = extractSemesters(content)
+        return semestersMentioned.isEmpty() || selectedSemester in semestersMentioned
+    }
+
+    private fun extractSemesters(content: String): Set<Int> {
+        val semesters = linkedSetOf<Int>()
+
+        SEMESTER_REGEXES.forEach { regex ->
+            regex.findAll(content).forEach { match ->
+                match.groups.drop(1)
+                    .mapNotNull { it?.value?.trim() }
+                    .forEach { rawValue ->
+                        semesterFromToken(rawValue)?.let { semesters.add(it) }
+                    }
+            }
         }
 
-        val mentionsSpecificSemester = (1..8).flatMap { semesterAliases(it) }.any { alias ->
-            content.contains(alias)
-        }
-
-        return !mentionsSpecificSemester
+        return semesters
     }
 
     private fun branchAliases(branch: String?): List<String> {
         return BRANCH_KEYWORDS[branch?.uppercase()].orEmpty()
     }
 
-    private fun containsKeyword(content: String, keywords: List<String>): Boolean {
-        return keywords.any { keyword -> content.contains(keyword) }
+    private fun containsAnyPhrase(content: String, phrases: List<String>): Boolean {
+        return phrases.any { phrase -> containsPhrase(content, phrase) }
+    }
+
+    private fun containsPhrase(content: String, phrase: String): Boolean {
+        return Regex("""(?<![a-z0-9])${Regex.escape(normalize(phrase))}(?![a-z0-9])""")
+            .containsMatchIn(content)
+    }
+
+    private fun semesterFromToken(rawValue: String): Int? {
+        val normalized = rawValue.trim().lowercase().replace(Regex("[^a-z0-9]"), "")
+        return when (normalized) {
+            "1", "1st", "first", "i" -> 1
+            "2", "2nd", "second", "ii" -> 2
+            "3", "3rd", "third", "iii" -> 3
+            "4", "4th", "fourth", "iv" -> 4
+            "5", "5th", "fifth", "v" -> 5
+            "6", "6th", "sixth", "vi" -> 6
+            "7", "7th", "seventh", "vii" -> 7
+            "8", "8th", "eighth", "viii" -> 8
+            else -> null
+        }
+    }
+
+    private fun normalize(text: String): String {
+        return text.lowercase().replace(Regex("\\s+"), " ").trim()
     }
 
     companion object {
-        private val EXAM_KEYWORDS = listOf("exam", "isa", "esa", "quiz", "test", "internal")
-        private val ASSIGNMENT_KEYWORDS = listOf("assignment", "submission", "lab record", "project review")
-        private val INTERNSHIP_KEYWORDS = listOf("internship", "placement", "career")
-        private val ALWAYS_ALLOW_KEYWORDS = listOf("exam", "isa", "assignment", "internship")
-        private val GLOBAL_KEYWORDS = listOf("all", "all branches", "all students", "all semesters", "everyone")
-        private val BLOCKED_BRANCH_KEYWORDS = listOf("mechanical", "pharm", "mba")
+        private val EXAM_PHRASES = listOf(
+            "exam",
+            "isa",
+            "esa",
+            "timetable",
+            "time table",
+            "quiz",
+            "test",
+            "internal"
+        )
+        private val EXAM_PRIORITY_PHRASES = listOf("exam", "isa", "esa", "timetable", "time table")
+        private val INTERNSHIP_PHRASES = listOf(
+            "internship",
+            "opportunity",
+            "opportunities",
+            "placement",
+            "career",
+            "workshop"
+        )
+        private val NOTICE_PHRASES = listOf(
+            "assignment",
+            "notice",
+            "notification",
+            "calendar of events",
+            "backlog",
+            "enrollment"
+        )
+        private val ALWAYS_ALLOW_PHRASES = EXAM_PHRASES + INTERNSHIP_PHRASES + NOTICE_PHRASES
+        private val GLOBAL_PHRASES = listOf(
+            "all",
+            "all branches",
+            "all students",
+            "all semesters",
+            "everyone",
+            "open to all"
+        )
+        private val BLOCKED_BRANCH_PHRASES = listOf("pharm", "nursing", "mbbs", "bba", "bcom")
         private val BRANCH_KEYWORDS = mapOf(
-            "CSE" to listOf("cse", "computer science"),
-            "ECE" to listOf("ece", "electronics"),
-            "EEE" to listOf("eee", "electrical"),
-            "ME" to listOf(" me ", "mech", "mechanical"),
+            "CSE" to listOf("cse", "computer science", "computer science and engineering"),
+            "ECE" to listOf("ece", "electronics", "electronics and communication"),
+            "EEE" to listOf("eee", "electrical", "electrical and electronics"),
+            "ME" to listOf("me", "mech", "mechanical"),
             "CIVIL" to listOf("civil"),
             "PHARM" to listOf("pharm", "pharmacy"),
             "MBA" to listOf("mba"),
             "BBA" to listOf("bba"),
             "BCA" to listOf("bca"),
-            "MCA" to listOf("mca")
+            "MCA" to listOf("mca"),
+            "AIML" to listOf("aiml", "ai ml", "artificial intelligence", "machine learning")
         )
+        private val SEMESTER_REGEXES = listOf(
+            Regex("""\b([1-8](?:st|nd|rd|th)?)\s*(?:sem|semester)\b"""),
+            Regex("""\b(?:sem|semester)\s*([1-8])\b"""),
+            Regex("""\b([ivx]{1,4})\s*(?:sem|semester)\b"""),
+            Regex("""\b([1-8](?:st|nd|rd|th)?)\s*(?:,|&|and)\s*([1-8](?:st|nd|rd|th)?)\s*(?:sem|semester)\b"""),
+            Regex("""\b([1-8](?:st|nd|rd|th)?)\s*,\s*([1-8](?:st|nd|rd|th)?)\s*(?:and|&)\s*([1-8](?:st|nd|rd|th)?)\s*(?:sem|semester)\b""")
+        )
+    }
 
-        private fun semesterAliases(semester: Int): List<String> {
-            val ordinal = when (semester) {
-                1 -> "1st"
-                2 -> "2nd"
-                3 -> "3rd"
-                else -> "${semester}th"
-            }
-
-            val roman = when (semester) {
-                1 -> "i"
-                2 -> "ii"
-                3 -> "iii"
-                4 -> "iv"
-                5 -> "v"
-                6 -> "vi"
-                7 -> "vii"
-                else -> "viii"
-            }
-
-            return listOf(
-                "sem $semester",
-                "semester $semester",
-                "$ordinal sem",
-                "$roman sem"
-            )
-        }
+    enum class AnnouncementPriority {
+        HIGH,
+        MEDIUM,
+        LOW
     }
 }

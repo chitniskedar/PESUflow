@@ -53,7 +53,7 @@ class HiddenLogActivity : AppCompatActivity() {
             fun bind(item: Announcement) {
                 binding.textMessage.text = item.title
                 binding.textCategory.text = item.date
-                binding.textTimestamp.text = item.link ?: binding.root.context.getString(R.string.no_attachment_link)
+                binding.textTimestamp.text = item.fullText
                 binding.textShownStatus.text = binding.root.context.getString(R.string.saved_locally)
             }
         }

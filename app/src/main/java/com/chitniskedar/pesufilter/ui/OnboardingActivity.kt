@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.chitniskedar.pesufilter.R
+import com.chitniskedar.pesufilter.auth.LoginActivity
 import com.chitniskedar.pesufilter.databinding.ActivityOnboardingBinding
 import com.chitniskedar.pesufilter.utils.PreferencesManager
 import com.chitniskedar.pesufilter.worker.AnnouncementScheduler
@@ -28,6 +29,11 @@ class OnboardingActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         preferencesManager = PreferencesManager(this)
+        if (!preferencesManager.hasActiveSession()) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
         if (preferencesManager.isSetupDone() && !intent.getBooleanExtra(EXTRA_EDIT_MODE, false)) {
             startActivity(Intent(this, MainActivity::class.java))
             finish()
@@ -82,24 +88,18 @@ class OnboardingActivity : AppCompatActivity() {
 
         binding.spinnerBranch.setSelection(branchIndex)
         binding.spinnerSemester.setSelection(semesterIndex)
-        binding.editBackendUrl.setText(preferencesManager.getBackendUrl())
-        binding.editBackendCookie.setText(preferencesManager.getBackendCookie().orEmpty())
     }
 
     private fun saveProfileAndContinue() {
         val branch = binding.spinnerBranch.selectedItem?.toString().orEmpty()
         val semester = binding.spinnerSemester.selectedItem?.toString()?.toIntOrNull()
-        val backendUrl = binding.editBackendUrl.text?.toString().orEmpty().trim()
-        val backendCookie = binding.editBackendCookie.text?.toString()?.trim().orEmpty()
 
-        if (branch.isBlank() || semester == null || backendUrl.isBlank()) {
+        if (branch.isBlank() || semester == null) {
             Toast.makeText(this, R.string.complete_profile_prompt, Toast.LENGTH_SHORT).show()
             return
         }
 
         preferencesManager.saveUserProfile(branch, semester)
-        preferencesManager.saveBackendUrl(backendUrl)
-        preferencesManager.saveBackendCookie(backendCookie.ifBlank { null })
         AnnouncementScheduler.schedulePeriodic(this)
         AnnouncementScheduler.enqueueImmediate(this)
         startActivity(Intent(this, MainActivity::class.java))

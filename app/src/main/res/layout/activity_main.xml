@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/midnight_black"
     android:orientation="vertical"
     android:padding="20dp">
 
@@ -10,6 +12,7 @@
         android:layout_height="wrap_content"
         android:text="@string/app_name"
         android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
+        android:textColor="@color/pure_white"
         android:textStyle="bold" />
 
     <TextView
@@ -17,14 +20,16 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="@string/profile_summary_placeholder" />
+        android:text="@string/profile_summary_placeholder"
+        android:textColor="@color/steel_grey" />
 
     <TextView
         android:id="@+id/textSyncStatus"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="@string/no_sync_yet" />
+        android:text="@string/no_sync_yet"
+        android:textColor="@color/steel_grey" />
 
     <Button
         android:id="@+id/buttonRefreshNow"
@@ -32,6 +37,15 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:text="@string/refresh_now" />
+
+    <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/switchTestMode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/test_mode_label"
+        android:textColor="@color/pure_white"
+        app:trackTint="@color/graphite" />
 
     <Button
         android:id="@+id/buttonEditProfile"
@@ -46,41 +60,51 @@
         android:layout_marginTop="24dp"
         android:text="@string/filter_categories"
         android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+        android:textColor="@color/pure_white"
         android:textStyle="bold" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="@string/preferences_hint" />
+        android:text="@string/preferences_hint"
+        android:textColor="@color/steel_grey" />
 
     <com.google.android.material.materialswitch.MaterialSwitch
         android:id="@+id/switchExams"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:checked="true"
-        android:text="@string/exams_label" />
+        android:text="@string/exams_label"
+        android:textColor="@color/pure_white"
+        app:trackTint="@color/graphite" />
 
     <com.google.android.material.materialswitch.MaterialSwitch
         android:id="@+id/switchAssignments"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:checked="true"
-        android:text="@string/assignments_label" />
+        android:text="@string/assignments_label"
+        android:textColor="@color/pure_white"
+        app:trackTint="@color/graphite" />
 
     <com.google.android.material.materialswitch.MaterialSwitch
         android:id="@+id/switchInternships"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:checked="true"
-        android:text="@string/internships_label" />
+        android:text="@string/internships_label"
+        android:textColor="@color/pure_white"
+        app:trackTint="@color/graphite" />
 
     <com.google.android.material.materialswitch.MaterialSwitch
         android:id="@+id/switchGeneral"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:checked="true"
-        android:text="@string/general_label" />
+        android:text="@string/general_label"
+        android:textColor="@color/pure_white"
+        app:trackTint="@color/graphite" />
 
     <TextView
         android:id="@+id/textEmptyState"
@@ -89,6 +113,7 @@
         android:layout_marginTop="24dp"
         android:text="@string/no_announcements_found"
         android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+        android:textColor="@color/pure_white"
         android:textStyle="bold" />
 
     <androidx.recyclerview.widget.RecyclerView
@@ -96,7 +121,9 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="12dp"
-        android:layout_weight="1" />
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="8dp" />
 
     <Button
         android:id="@+id/buttonOpenLog"

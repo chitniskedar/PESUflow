@@ -4,7 +4,10 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="12dp"
-    app:cardCornerRadius="12dp"
+    app:cardBackgroundColor="@color/midnight_black_soft"
+    app:cardCornerRadius="14dp"
+    app:strokeColor="@color/graphite"
+    app:strokeWidth="1dp"
     app:cardUseCompatPadding="true">
 
     <LinearLayout
@@ -18,25 +21,29 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+            android:textColor="@color/pure_white"
             android:textStyle="bold" />
 
         <TextView
             android:id="@+id/textCategory"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp" />
+            android:layout_marginTop="8dp"
+            android:textColor="@color/steel_grey" />
 
         <TextView
             android:id="@+id/textTimestamp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp" />
+            android:layout_marginTop="6dp"
+            android:textColor="@color/pure_white" />
 
         <TextView
             android:id="@+id/textShownStatus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp" />
+            android:layout_marginTop="8dp"
+            android:textColor="@color/steel_grey" />
 
     </LinearLayout>
 

@@ -12,8 +12,10 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.chitniskedar.pesufilter.R
+import com.chitniskedar.pesufilter.auth.LoginActivity
 import com.chitniskedar.pesufilter.model.Announcement
 import com.chitniskedar.pesufilter.ui.MainActivity
+import com.chitniskedar.pesufilter.utils.FilterManager.AnnouncementPriority
 
 class NotificationHelper(private val context: Context) {
 
@@ -23,7 +25,10 @@ class NotificationHelper(private val context: Context) {
         createNotificationChannel()
     }
 
-    fun showAnnouncementNotification(announcement: Announcement) {
+    fun showAnnouncementNotification(
+        announcement: Announcement,
+        priority: AnnouncementPriority = AnnouncementPriority.HIGH
+    ) {
         if (!canPostNotifications()) {
             return
         }
@@ -37,27 +42,58 @@ class NotificationHelper(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val body = buildString {
-            append(announcement.date)
-            announcement.link?.takeIf { it.isNotBlank() }?.let {
-                if (isNotBlank()) {
-                    append("\n")
-                }
-                append(it)
-            }
-        }.ifBlank { context.getString(R.string.no_attachment_link) }
+        val body = listOf(announcement.date, announcement.fullText)
+            .filter { it.isNotBlank() }
+            .joinToString("\n")
+            .trim()
+            .take(MAX_BODY_LENGTH)
+            .ifBlank { context.getString(R.string.announcement_details_unavailable) }
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_filter)
             .setContentTitle(announcement.title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(
+                when (priority) {
+                    AnnouncementPriority.HIGH -> NotificationCompat.PRIORITY_HIGH
+                    AnnouncementPriority.MEDIUM -> NotificationCompat.PRIORITY_DEFAULT
+                    AnnouncementPriority.LOW -> NotificationCompat.PRIORITY_LOW
+                }
+            )
             .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(contentIntent)
             .setAutoCancel(true)
+            .build()
+
+        notificationManager.notify((System.currentTimeMillis() and 0x7FFFFFFF).toInt(), notification)
+    }
+
+    fun showSessionExpiredNotification() {
+        if (!canPostNotifications()) {
+            return
+        }
+
+        val contentIntent = PendingIntent.getActivity(
+            context,
+            1002,
+            Intent(context, LoginActivity::class.java).apply {
+                putExtra(LoginActivity.EXTRA_FORCE_RELOGIN, true)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification_filter)
+            .setContentTitle(context.getString(R.string.session_expired_title))
+            .setContentText(context.getString(R.string.session_expired_body))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ERROR)
+            .setAutoCancel(true)
+            .setContentIntent(contentIntent)
             .build()
 
         notificationManager.notify((System.currentTimeMillis() and 0x7FFFFFFF).toInt(), notification)
@@ -93,5 +129,6 @@ class NotificationHelper(private val context: Context) {
 
     companion object {
         const val CHANNEL_ID = "pesuflow_announcements"
+        private const val MAX_BODY_LENGTH = 280
     }
 }

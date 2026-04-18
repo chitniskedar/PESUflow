@@ -17,6 +17,14 @@ class PreferencesManager(context: Context) {
         return prefs.getBoolean(KEY_SETUP_DONE, false)
     }
 
+    fun isTestModeEnabled(): Boolean {
+        return prefs.getBoolean(KEY_TEST_MODE, false)
+    }
+
+    fun hasActiveSession(): Boolean {
+        return !getBackendCookie().isNullOrBlank()
+    }
+
     fun saveUserProfile(branch: String, semester: Int) {
         prefs.edit()
             .putString(KEY_BRANCH, branch)
@@ -37,6 +45,10 @@ class PreferencesManager(context: Context) {
         prefs.edit().putBoolean(category, enabled).apply()
     }
 
+    fun setTestModeEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_TEST_MODE, enabled).apply()
+    }
+
     fun saveAnnouncements(items: List<Announcement>) {
         prefs.edit().putString(ANNOUNCEMENTS_KEY, toJson(items)).apply()
     }
@@ -52,7 +64,7 @@ class PreferencesManager(context: Context) {
                 Announcement(
                     title = jsonObject.optString(KEY_TITLE),
                     date = jsonObject.optString(KEY_DATE),
-                    link = jsonObject.optString(KEY_LINK).ifBlank { null }
+                    fullText = jsonObject.optString(KEY_FULL_TEXT)
                 )
             )
         }
@@ -68,6 +80,10 @@ class PreferencesManager(context: Context) {
         val updated = prefs.getStringSet(KEY_SEEN_ANNOUNCEMENTS, emptySet()).orEmpty().toMutableSet()
         updated.add(stableId)
         prefs.edit().putStringSet(KEY_SEEN_ANNOUNCEMENTS, updated).apply()
+    }
+
+    fun clearSeenAnnouncements() {
+        prefs.edit().remove(KEY_SEEN_ANNOUNCEMENTS).apply()
     }
 
     fun setLastSyncTimestamp(timestamp: Long) {
@@ -106,6 +122,16 @@ class PreferencesManager(context: Context) {
         prefs.edit().putString(KEY_BACKEND_COOKIE, cookie).apply()
     }
 
+    fun clearSession() {
+        prefs.edit()
+            .remove(KEY_BACKEND_COOKIE)
+            .apply()
+    }
+
+    fun clearAnnouncements() {
+        prefs.edit().remove(ANNOUNCEMENTS_KEY).apply()
+    }
+
     private fun toJson(items: List<Announcement>): String {
         val jsonArray = JSONArray()
         items.forEach { item ->
@@ -113,7 +139,7 @@ class PreferencesManager(context: Context) {
                 JSONObject().apply {
                     put(KEY_TITLE, item.title)
                     put(KEY_DATE, item.date)
-                    put(KEY_LINK, item.link.orEmpty())
+                    put(KEY_FULL_TEXT, item.fullText)
                 }
             )
         }
@@ -122,7 +148,7 @@ class PreferencesManager(context: Context) {
 
     companion object {
         const val CATEGORY_EXAM = "EXAM"
-        const val CATEGORY_ASSIGNMENT = "ASSIGNMENT"
+        const val CATEGORY_NOTICE = "NOTICE"
         const val CATEGORY_INTERNSHIP = "INTERNSHIP"
         const val CATEGORY_GENERAL = "GENERAL"
 
@@ -130,15 +156,16 @@ class PreferencesManager(context: Context) {
         private const val ANNOUNCEMENTS_KEY = "announcements_key"
         private const val KEY_TITLE = "title"
         private const val KEY_DATE = "date"
-        private const val KEY_LINK = "link"
+        private const val KEY_FULL_TEXT = "full_text"
         private const val KEY_BRANCH = "branch"
         private const val KEY_SEMESTER = "semester"
         private const val KEY_SETUP_DONE = "setup_done"
+        private const val KEY_TEST_MODE = "test_mode"
         private const val KEY_SEEN_ANNOUNCEMENTS = "seen_announcements"
         private const val KEY_LAST_SYNC_TIMESTAMP = "last_sync_timestamp"
         private const val KEY_LAST_SYNC_ERROR = "last_sync_error"
         private const val KEY_BACKEND_URL = "backend_url"
         private const val KEY_BACKEND_COOKIE = "backend_cookie"
-        private const val DEFAULT_BACKEND_URL = "https://your-pesu-backend-url-here"
+        const val DEFAULT_BACKEND_URL = "https://www.pesuacademy.com/Academy/s/studentProfilePESUAdmin?menuId=667"
     }
 }

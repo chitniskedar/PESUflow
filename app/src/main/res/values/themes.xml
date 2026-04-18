@@ -1,14 +1,21 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Theme.PESUflow" parent="Theme.Material3.Dark.NoActionBar">
-        <item name="colorPrimary">@color/blue_primary</item>
-        <item name="colorPrimaryContainer">@color/blue_dark</item>
-        <item name="colorSecondary">@color/teal_accent</item>
-        <item name="android:statusBarColor" tools:targetApi="l">@color/surface</item>
-        <item name="android:navigationBarColor">@color/surface</item>
+        <item name="colorPrimary">@color/pure_white</item>
+        <item name="colorOnPrimary">@color/midnight_black</item>
+        <item name="colorPrimaryContainer">@color/graphite</item>
+        <item name="colorOnPrimaryContainer">@color/pure_white</item>
+        <item name="colorSecondary">@color/steel_grey</item>
+        <item name="colorOnSecondary">@color/midnight_black</item>
+        <item name="colorSurface">@color/midnight_black</item>
+        <item name="colorSurfaceVariant">@color/midnight_black_soft</item>
+        <item name="colorOnSurface">@color/pure_white</item>
+        <item name="colorOnSurfaceVariant">@color/steel_grey</item>
+        <item name="android:colorBackground">@color/midnight_black</item>
+        <item name="android:textColorPrimary">@color/pure_white</item>
+        <item name="android:textColorSecondary">@color/steel_grey</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@color/midnight_black</item>
+        <item name="android:navigationBarColor">@color/midnight_black</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
-        <item name="colorSurface">@color/surface</item>
-        <item name="colorSurfaceVariant">@color/surface_variant</item>
-        <item name="android:colorBackground">@color/surface</item>
     </style>
 </resources>

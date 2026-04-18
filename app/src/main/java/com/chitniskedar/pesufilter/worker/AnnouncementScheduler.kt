@@ -2,6 +2,7 @@ package com.chitniskedar.pesufilter.worker
 
 import android.content.Context
 import androidx.work.Constraints
+import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
@@ -26,9 +27,14 @@ object AnnouncementScheduler {
         )
     }
 
-    fun enqueueImmediate(context: Context) {
+    fun enqueueImmediate(context: Context, forceTestMode: Boolean = false) {
         val oneTimeRequest = OneTimeWorkRequestBuilder<AnnouncementSyncWorker>()
             .setConstraints(defaultConstraints())
+            .setInputData(
+                Data.Builder()
+                    .putBoolean(AnnouncementSyncWorker.KEY_FORCE_TEST_MODE, forceTestMode)
+                    .build()
+            )
             .build()
 
         WorkManager.getInstance(context).enqueueUniqueWork(

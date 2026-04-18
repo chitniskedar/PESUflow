@@ -1,7 +1,8 @@
 <resources>
-    <color name="blue_primary">#67B3FF</color>
-    <color name="blue_dark">#0F4C81</color>
-    <color name="teal_accent">#55D6BE</color>
-    <color name="surface">#09131F</color>
-    <color name="surface_variant">#122235</color>
+    <color name="midnight_black">#0A0B0F</color>
+    <color name="midnight_black_soft">#14161C</color>
+    <color name="graphite">#2A2D36</color>
+    <color name="steel_grey">#8C919E</color>
+    <color name="mist_white">#F5F7FA</color>
+    <color name="pure_white">#FFFFFF</color>
 </resources>
