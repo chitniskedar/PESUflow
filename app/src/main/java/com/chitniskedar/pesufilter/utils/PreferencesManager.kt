@@ -17,10 +17,6 @@ class PreferencesManager(context: Context) {
         return prefs.getBoolean(KEY_SETUP_DONE, false)
     }
 
-    fun isTestModeEnabled(): Boolean {
-        return prefs.getBoolean(KEY_TEST_MODE, false)
-    }
-
     fun hasActiveSession(): Boolean {
         return !getBackendCookie().isNullOrBlank()
     }
@@ -43,10 +39,6 @@ class PreferencesManager(context: Context) {
 
     fun setCategoryEnabled(category: String, enabled: Boolean) {
         prefs.edit().putBoolean(category, enabled).apply()
-    }
-
-    fun setTestModeEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_TEST_MODE, enabled).apply()
     }
 
     fun saveAnnouncements(items: List<Announcement>) {
@@ -160,7 +152,6 @@ class PreferencesManager(context: Context) {
         private const val KEY_BRANCH = "branch"
         private const val KEY_SEMESTER = "semester"
         private const val KEY_SETUP_DONE = "setup_done"
-        private const val KEY_TEST_MODE = "test_mode"
         private const val KEY_SEEN_ANNOUNCEMENTS = "seen_announcements"
         private const val KEY_LAST_SYNC_TIMESTAMP = "last_sync_timestamp"
         private const val KEY_LAST_SYNC_ERROR = "last_sync_error"

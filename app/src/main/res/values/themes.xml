@@ -2,7 +2,7 @@
     <style name="Theme.PESUflow" parent="Theme.Material3.Dark.NoActionBar">
         <item name="colorPrimary">@color/pure_white</item>
         <item name="colorOnPrimary">@color/midnight_black</item>
-        <item name="colorPrimaryContainer">@color/graphite</item>
+        <item name="colorPrimaryContainer">@color/chip_surface</item>
         <item name="colorOnPrimaryContainer">@color/pure_white</item>
         <item name="colorSecondary">@color/steel_grey</item>
         <item name="colorOnSecondary">@color/midnight_black</item>
@@ -17,5 +17,17 @@
         <item name="android:navigationBarColor">@color/midnight_black</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
+        <item name="materialButtonStyle">@style/Widget.PESUflow.Button</item>
+        <item name="materialSwitchStyle">@style/Widget.PESUflow.Switch</item>
+    </style>
+
+    <style name="Widget.PESUflow.Button" parent="Widget.Material3.Button">
+        <item name="android:minHeight">52dp</item>
+        <item name="cornerRadius">18dp</item>
+    </style>
+
+    <style name="Widget.PESUflow.Switch" parent="Widget.Material3.CompoundButton.MaterialSwitch">
+        <item name="thumbTint">@color/pure_white</item>
+        <item name="trackTint">@color/graphite</item>
     </style>
 </resources>

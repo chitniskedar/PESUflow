@@ -1,135 +1,154 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/midnight_black"
-    android:orientation="vertical"
-    android:padding="20dp">
+    android:background="@drawable/bg_main_canvas"
+    android:fillViewport="true">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/app_name"
-        android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
-        android:textColor="@color/pure_white"
-        android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/textProfileSummary"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/profile_summary_placeholder"
-        android:textColor="@color/steel_grey" />
-
-    <TextView
-        android:id="@+id/textSyncStatus"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/no_sync_yet"
-        android:textColor="@color/steel_grey" />
+        android:orientation="vertical"
+        android:padding="20dp">
 
-    <Button
-        android:id="@+id/buttonRefreshNow"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="@string/refresh_now" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_card_surface"
+            android:orientation="vertical"
+            android:padding="24dp">
 
-    <com.google.android.material.materialswitch.MaterialSwitch
-        android:id="@+id/switchTestMode"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="@string/test_mode_label"
-        android:textColor="@color/pure_white"
-        app:trackTint="@color/graphite" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_chip_surface"
+                android:paddingLeft="12dp"
+                android:paddingTop="6dp"
+                android:paddingRight="12dp"
+                android:paddingBottom="6dp"
+                android:text="@string/dashboard_badge"
+                android:textColor="@color/pure_white"
+                android:textStyle="bold" />
 
-    <Button
-        android:id="@+id/buttonEditProfile"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="@string/edit_profile" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:text="@string/app_name"
+                android:textAppearance="@style/TextAppearance.Material3.HeadlineMedium"
+                android:textColor="@color/pure_white"
+                android:textStyle="bold" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="@string/filter_categories"
-        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-        android:textColor="@color/pure_white"
-        android:textStyle="bold" />
+            <TextView
+                android:id="@+id/textProfileSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="@string/profile_summary_placeholder"
+                android:textColor="@color/mist_white" />
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:text="@string/preferences_hint"
-        android:textColor="@color/steel_grey" />
+            <TextView
+                android:id="@+id/textSyncStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/no_sync_yet"
+                android:textColor="@color/steel_grey" />
 
-    <com.google.android.material.materialswitch.MaterialSwitch
-        android:id="@+id/switchExams"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:checked="true"
-        android:text="@string/exams_label"
-        android:textColor="@color/pure_white"
-        app:trackTint="@color/graphite" />
+            <Button
+                android:id="@+id/buttonRefreshNow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/refresh_now" />
 
-    <com.google.android.material.materialswitch.MaterialSwitch
-        android:id="@+id/switchAssignments"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:checked="true"
-        android:text="@string/assignments_label"
-        android:textColor="@color/pure_white"
-        app:trackTint="@color/graphite" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal">
 
-    <com.google.android.material.materialswitch.MaterialSwitch
-        android:id="@+id/switchInternships"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:checked="true"
-        android:text="@string/internships_label"
-        android:textColor="@color/pure_white"
-        app:trackTint="@color/graphite" />
+                <Button
+                    android:id="@+id/buttonEditProfile"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_secondary_button"
+                    android:text="@string/edit_profile"
+                    android:textColor="@color/pure_white" />
 
-    <com.google.android.material.materialswitch.MaterialSwitch
-        android:id="@+id/switchGeneral"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:checked="true"
-        android:text="@string/general_label"
-        android:textColor="@color/pure_white"
-        app:trackTint="@color/graphite" />
+                <Button
+                    android:id="@+id/buttonOpenLog"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_secondary_button"
+                    android:text="@string/open_history"
+                    android:textColor="@color/pure_white" />
+            </LinearLayout>
+        </LinearLayout>
 
-    <TextView
-        android:id="@+id/textEmptyState"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="@string/no_announcements_found"
-        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-        android:textColor="@color/pure_white"
-        android:textStyle="bold" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:background="@drawable/bg_card_surface"
+            android:orientation="vertical"
+            android:padding="24dp">
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerAnnouncements"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="12dp"
-        android:layout_weight="1"
-        android:clipToPadding="false"
-        android:paddingBottom="8dp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/filter_categories"
+                android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
+                android:textColor="@color/pure_white"
+                android:textStyle="bold" />
 
-    <Button
-        android:id="@+id/buttonOpenLog"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="@string/open_history" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/preferences_hint"
+                android:textColor="@color/steel_grey" />
 
-</LinearLayout>
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchExams"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:checked="true"
+                android:text="@string/exams_label"
+                android:textColor="@color/pure_white" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchAssignments"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:checked="true"
+                android:text="@string/assignments_label"
+                android:textColor="@color/pure_white" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchInternships"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:checked="true"
+                android:text="@string/internships_label"
+                android:textColor="@color/pure_white" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchGeneral"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:checked="true"
+                android:text="@string/general_label"
+                android:textColor="@color/pure_white" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

@@ -1,6 +1,11 @@
 <resources>
     <color name="midnight_black">#0A0B0F</color>
     <color name="midnight_black_soft">#14161C</color>
+    <color name="deep_ocean">#10131A</color>
+    <color name="ink_blue_soft">#1B1F29</color>
+    <color name="card_stroke">#2A2F38</color>
+    <color name="chip_surface">#1C2027</color>
+    <color name="button_secondary">#10161F</color>
     <color name="graphite">#2A2D36</color>
     <color name="steel_grey">#8C919E</color>
     <color name="mist_white">#F5F7FA</color>

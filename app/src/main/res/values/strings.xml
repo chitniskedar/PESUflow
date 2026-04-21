@@ -4,6 +4,7 @@
     <string name="channel_description">Filtered PESU announcements for your branch and semester</string>
     <string name="post_notifications_granted">Notification popups are allowed.</string>
     <string name="post_notifications_missing">Notification popups are not allowed yet.</string>
+    <string name="dashboard_badge">Announcement Control</string>
     <string name="filter_categories">Show Notifications For</string>
     <string name="exams_label">Exams &amp; Timetables</string>
     <string name="assignments_label">Academic Notices</string>
@@ -30,12 +31,9 @@
     <string name="profile_summary">Branch: %1$s   Semester: %2$s</string>
     <string name="profile_summary_placeholder">Branch and semester will appear here.</string>
     <string name="edit_profile">Settings</string>
-    <string name="preferences_hint">Filtering is applied in this order: category, semester, branch, then priority keywords. If only Exams &amp; Timetables is enabled, internship posts are blocked before notifications are created.</string>
+    <string name="preferences_hint">Choose the notification categories you want to receive.</string>
     <string name="refresh_now">Refresh Now</string>
     <string name="refresh_started">Announcement refresh started.</string>
-    <string name="test_mode_label">Test mode</string>
-    <string name="test_mode_enabled">Test mode enabled. Manual refresh will replay notifications from the simulation feed.</string>
-    <string name="test_refresh_started">Test refresh started. Simulated announcements will be filtered using your current branch, semester, and topic switches.</string>
     <string name="no_sync_yet">No sync has finished yet.</string>
     <string name="last_sync_success">Last sync: %1$s</string>
     <string name="last_sync_error">Last sync error: %1$s</string>

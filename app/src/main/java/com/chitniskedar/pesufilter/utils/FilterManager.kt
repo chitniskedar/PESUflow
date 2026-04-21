@@ -16,17 +16,7 @@ class FilterManager(
             return false
         }
 
-        val branchAliases = branchAliases(preferencesManager.getSelectedBranch())
-        val branchMatch = branchAliases.any { alias -> containsPhrase(normalizedText, alias) }
-        val globalMatch = containsAnyPhrase(normalizedText, GLOBAL_PHRASES)
-        val importantMatch = containsAnyPhrase(normalizedText, ALWAYS_ALLOW_PHRASES)
-        val blockedMatch = containsAnyPhrase(normalizedText, BLOCKED_BRANCH_PHRASES)
-
-        if (blockedMatch && !branchMatch && !globalMatch) {
-            return false
-        }
-
-        return branchMatch || globalMatch || importantMatch
+        return matchesBranch(normalizedText)
     }
 
     fun categorize(text: String): String {
@@ -50,7 +40,7 @@ class FilterManager(
 
     private fun matchesSemester(content: String): Boolean {
         val selectedSemester = preferencesManager.getSelectedSemester() ?: return true
-        if (containsAnyPhrase(content, GLOBAL_PHRASES)) {
+        if (containsAnyPhrase(content, GLOBAL_SEMESTER_PHRASES)) {
             return true
         }
 
@@ -60,9 +50,21 @@ class FilterManager(
 
     private fun extractSemesters(content: String): Set<Int> {
         val semesters = linkedSetOf<Int>()
+        val normalizedContent = normalize(content)
+
+        SEMESTER_RANGE_REGEXES.forEach { regex ->
+            regex.findAll(normalizedContent).forEach { match ->
+                val start = semesterFromToken(match.groupValues.getOrNull(1).orEmpty())
+                val end = semesterFromToken(match.groupValues.getOrNull(2).orEmpty())
+                if (start != null && end != null) {
+                    val range = if (start <= end) start..end else end..start
+                    semesters.addAll(range)
+                }
+            }
+        }
 
         SEMESTER_REGEXES.forEach { regex ->
-            regex.findAll(content).forEach { match ->
+            regex.findAll(normalizedContent).forEach { match ->
                 match.groups.drop(1)
                     .mapNotNull { it?.value?.trim() }
                     .forEach { rawValue ->
@@ -71,11 +73,35 @@ class FilterManager(
             }
         }
 
+        YEAR_REGEXES.forEach { regex ->
+            regex.findAll(normalizedContent).forEach { match ->
+                match.groups.drop(1)
+                    .mapNotNull { it?.value?.trim() }
+                    .forEach { rawValue ->
+                        yearFromToken(rawValue)?.let { year ->
+                            semesters.addAll(yearToSemesters(year))
+                        }
+                    }
+            }
+        }
+
         return semesters
     }
 
-    private fun branchAliases(branch: String?): List<String> {
-        return BRANCH_KEYWORDS[branch?.uppercase()].orEmpty()
+    private fun matchesBranch(content: String): Boolean {
+        val selectedBranch = preferencesManager.getSelectedBranch()?.uppercase() ?: return true
+        if (containsAnyPhrase(content, GLOBAL_BRANCH_PHRASES)) {
+            return true
+        }
+
+        val branchesMentioned = extractBranches(content)
+        return branchesMentioned.isEmpty() || selectedBranch in branchesMentioned
+    }
+
+    private fun extractBranches(content: String): Set<String> {
+        return BRANCH_KEYWORDS.entries
+            .filter { (_, aliases) -> aliases.any { alias -> containsPhrase(content, alias) } }
+            .mapTo(linkedSetOf()) { it.key }
     }
 
     private fun containsAnyPhrase(content: String, phrases: List<String>): Boolean {
@@ -102,11 +128,33 @@ class FilterManager(
         }
     }
 
+    private fun yearFromToken(rawValue: String): Int? {
+        val normalized = rawValue.trim().lowercase().replace(Regex("[^a-z0-9]"), "")
+        return when (normalized) {
+            "1", "1st", "first", "i" -> 1
+            "2", "2nd", "second", "ii" -> 2
+            "3", "3rd", "third", "iii" -> 3
+            "4", "4th", "fourth", "iv" -> 4
+            else -> null
+        }
+    }
+
+    private fun yearToSemesters(year: Int): Set<Int> {
+        val startSemester = (year * 2) - 1
+        return setOf(startSemester, startSemester + 1)
+    }
+
     private fun normalize(text: String): String {
-        return text.lowercase().replace(Regex("\\s+"), " ").trim()
+        return text.lowercase()
+            .replace(Regex("[^a-z0-9]+"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
     }
 
     companion object {
+        private const val SEMESTER_TOKEN =
+            """(?:[1-8](?:st|nd|rd|th)?|first|second|third|fourth|fifth|sixth|seventh|eighth|i|ii|iii|iv|v|vi|vii|viii)"""
+
         private val EXAM_PHRASES = listOf(
             "exam",
             "isa",
@@ -134,16 +182,17 @@ class FilterManager(
             "backlog",
             "enrollment"
         )
-        private val ALWAYS_ALLOW_PHRASES = EXAM_PHRASES + INTERNSHIP_PHRASES + NOTICE_PHRASES
-        private val GLOBAL_PHRASES = listOf(
-            "all",
+        private val GLOBAL_BRANCH_PHRASES = listOf(
             "all branches",
             "all students",
-            "all semesters",
             "everyone",
             "open to all"
         )
-        private val BLOCKED_BRANCH_PHRASES = listOf("pharm", "nursing", "mbbs", "bba", "bcom")
+        private val GLOBAL_SEMESTER_PHRASES = listOf(
+            "all semesters",
+            "all sem",
+            "all years"
+        )
         private val BRANCH_KEYWORDS = mapOf(
             "CSE" to listOf("cse", "computer science", "computer science and engineering"),
             "ECE" to listOf("ece", "electronics", "electronics and communication"),
@@ -153,16 +202,29 @@ class FilterManager(
             "PHARM" to listOf("pharm", "pharmacy"),
             "MBA" to listOf("mba"),
             "BBA" to listOf("bba"),
+            "BCOM" to listOf("bcom", "b com"),
             "BCA" to listOf("bca"),
             "MCA" to listOf("mca"),
+            "MBBS" to listOf("mbbs"),
+            "NURSING" to listOf("nursing"),
             "AIML" to listOf("aiml", "ai ml", "artificial intelligence", "machine learning")
         )
+        private val SEMESTER_RANGE_REGEXES = listOf(
+            Regex("""\b($SEMESTER_TOKEN)\s+(?:sem|semester)\s+(?:to|through)\s+($SEMESTER_TOKEN)\s+(?:sem|semester)\b"""),
+            Regex("""\b($SEMESTER_TOKEN)\s+(?:to|through)\s+($SEMESTER_TOKEN)\s+(?:sem|semester)\b""")
+        )
         private val SEMESTER_REGEXES = listOf(
-            Regex("""\b([1-8](?:st|nd|rd|th)?)\s*(?:sem|semester)\b"""),
-            Regex("""\b(?:sem|semester)\s*([1-8])\b"""),
-            Regex("""\b([ivx]{1,4})\s*(?:sem|semester)\b"""),
-            Regex("""\b([1-8](?:st|nd|rd|th)?)\s*(?:,|&|and)\s*([1-8](?:st|nd|rd|th)?)\s*(?:sem|semester)\b"""),
-            Regex("""\b([1-8](?:st|nd|rd|th)?)\s*,\s*([1-8](?:st|nd|rd|th)?)\s*(?:and|&)\s*([1-8](?:st|nd|rd|th)?)\s*(?:sem|semester)\b""")
+            Regex("""\b($SEMESTER_TOKEN)\s+(?:sem|semester)\b"""),
+            Regex("""\b(?:sem|semester)\s+($SEMESTER_TOKEN)\b"""),
+            Regex("""\b($SEMESTER_TOKEN)\s+($SEMESTER_TOKEN)\s+($SEMESTER_TOKEN)\s+(?:sem|semester)\b"""),
+            Regex("""\b($SEMESTER_TOKEN)\s+($SEMESTER_TOKEN)\s+(?:sem|semester)\b"""),
+            Regex("""\b($SEMESTER_TOKEN)\s+($SEMESTER_TOKEN)\s+($SEMESTER_TOKEN)\s+(?:isa|esa|exam|timetable|time table|retest)\b"""),
+            Regex("""\b($SEMESTER_TOKEN)\s+($SEMESTER_TOKEN)\s+(?:isa|esa|exam|timetable|time table|retest)\b""")
+        )
+        private val YEAR_REGEXES = listOf(
+            Regex("""\b([1-4](?:st|nd|rd|th)?|first|second|third|fourth|i|ii|iii|iv)\s+(?:year|yr)\b"""),
+            Regex("""\b([1-4](?:st|nd|rd|th)?|first|second|third|fourth|i|ii|iii|iv)\s+and\s+([1-4](?:st|nd|rd|th)?|first|second|third|fourth|i|ii|iii|iv)\s+(?:year|yr)\b"""),
+            Regex("""\b([1-4](?:st|nd|rd|th)?|first|second|third|fourth|i|ii|iii|iv)\s*,\s*([1-4](?:st|nd|rd|th)?|first|second|third|fourth|i|ii|iii|iv)\s*(?:and|&)\s*([1-4](?:st|nd|rd|th)?|first|second|third|fourth|i|ii|iii|iv)\s+(?:year|yr)\b""")
         )
     }
 
