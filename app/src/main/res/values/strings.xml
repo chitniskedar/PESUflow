@@ -19,6 +19,7 @@
     <string name="internships_label">Internships &amp; Opportunities</string>
     <string name="general_label">General Announcements</string>
     <string name="open_history">Open Saved History</string>
+    <string name="replay_saved_notifications">Replay Saved Notifications</string>
     <string name="log_out">Log Out</string>
     <string name="hidden_log_title">Saved Announcement History</string>
     <string name="history_subtitle">Your filtered stream of saved academic announcements.</string>
@@ -55,6 +56,12 @@
     <string name="preferences_hint">Choose the notification categories you want to receive.</string>
     <string name="refresh_now">Refresh Now</string>
     <string name="refresh_started">Announcement refresh started.</string>
+    <string name="history_seeded">Loaded a few announcements into saved history for testing.</string>
+    <string name="replay_saved_started">Replaying notifications from saved history.</string>
+    <string name="replay_saved_none">No saved announcements available to replay.</string>
+    <string name="replay_saved_no_matches">No saved announcements match the current filters.</string>
+    <string name="replay_saved_count">Replaying %1$d matching notifications from saved history.</string>
+    <string name="replay_saved_blocked">Notifications are blocked right now.</string>
     <string name="refreshing_now">Refreshing now...</string>
     <string name="auto_refresh_status">Auto-refresh runs every 3 minutes while this screen is open.</string>
     <string name="notification_status_label">Notifications</string>
