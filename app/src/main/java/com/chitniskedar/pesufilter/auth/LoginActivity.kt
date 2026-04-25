@@ -138,6 +138,16 @@ class LoginActivity : AppCompatActivity() {
         }
     }
 
+    private fun resolveAnnouncementUrl(currentUrl: String): String {
+        // If we're already on a specific page that has announcements, use it.
+        // Otherwise, fall back to the default student profile page which contains the announcement list.
+        return if (currentUrl.contains("menuId=667")) {
+            currentUrl
+        } else {
+            PreferencesManager.DEFAULT_BACKEND_URL
+        }
+    }
+
     private fun navigateNext() {
         Toast.makeText(this, R.string.login_success, Toast.LENGTH_SHORT).show()
         if (preferencesManager.isSetupDone()) {

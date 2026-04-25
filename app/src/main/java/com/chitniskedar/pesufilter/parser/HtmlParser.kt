@@ -12,14 +12,11 @@ class HtmlParser {
         }
 
         val doc = Jsoup.parse(html, baseUrl)
-        val announcements = doc.select(".elem-info-wrapper")
-        val announcements = doc.select(
+        val announcementElements = doc.select(
             ".elem-info-wrapper, .announcement-item, .media, .list-group-item, .card, tr"
-        ).filter { looksLikeAnnouncementCard(it) }
+        ).toList().filter { looksLikeAnnouncementCard(it) }
 
-        return announcements.mapNotNull { element ->
-            val rawTitle = element.select("h4.text-info").text().trim()
-            val date = element.select(".text-date").text().trim()
+        return announcementElements.mapNotNull { element ->
             val rawTitle = extractTitle(element)
             val date = extractDate(element)
             val fullText = cleanFullText(element.text(), rawTitle, date)
@@ -47,7 +44,21 @@ class HtmlParser {
             "sign in",
             "forgot your password",
             "username",
-@@ -59,26 +62,94 @@ class HtmlParser {
+            "password",
+            "captcha",
+            "verify and sign in"
+        )
+
+        return loginMarkers.count { normalized.contains(it) } >= 2
+    }
+
+    private fun cleanTitle(rawTitle: String): String {
+        if (rawTitle.isBlank()) {
+            return rawTitle
+        }
+
+        return rawTitle
+            .lines()
             .map { it.trim() }
             .firstOrNull { it.isNotBlank() }
             ?.replace(Regex("\\s+"), " ")
