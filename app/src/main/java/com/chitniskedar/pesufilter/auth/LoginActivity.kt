@@ -5,6 +5,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
@@ -19,14 +21,24 @@ import com.chitniskedar.pesufilter.parser.HtmlParser
 import com.chitniskedar.pesufilter.ui.MainActivity
 import com.chitniskedar.pesufilter.ui.OnboardingActivity
 import com.chitniskedar.pesufilter.utils.PreferencesManager
+import com.chitniskedar.pesufilter.worker.BackgroundSyncService
 import org.json.JSONArray
+import java.net.URI
 
 class LoginActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityLoginBinding
     private lateinit var preferencesManager: PreferencesManager
     private val htmlParser = HtmlParser()
+    private val loginWatcherHandler = Handler(Looper.getMainLooper())
     private var completedLogin = false
+    private val loginWatcher = object : Runnable {
+        override fun run() {
+            val currentUrl = binding.webViewPortal.url ?: PESU_PORTAL_URL
+            inspectPageForLoginSuccess(currentUrl)
+            loginWatcherHandler.postDelayed(this, LOGIN_WATCH_INTERVAL_MS)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,6 +54,17 @@ class LoginActivity : AppCompatActivity() {
         loadPortal(forceFreshSession = intent.getBooleanExtra(EXTRA_FORCE_RELOGIN, false))
     }
 
+    override fun onResume() {
+        super.onResume()
+        loginWatcherHandler.removeCallbacks(loginWatcher)
+        loginWatcherHandler.postDelayed(loginWatcher, LOGIN_WATCH_INTERVAL_MS)
+    }
+
+    override fun onPause() {
+        loginWatcherHandler.removeCallbacks(loginWatcher)
+        super.onPause()
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     private fun configureWebView() {
         CookieManager.getInstance().apply {
@@ -49,11 +72,14 @@ class LoginActivity : AppCompatActivity() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 setAcceptThirdPartyCookies(binding.webViewPortal, true)
             }
+            flush()
         }
 
         binding.webViewPortal.settings.javaScriptEnabled = true
         binding.webViewPortal.settings.domStorageEnabled = true
         binding.webViewPortal.settings.loadsImagesAutomatically = true
+        binding.webViewPortal.settings.javaScriptCanOpenWindowsAutomatically = true
+        binding.webViewPortal.settings.setSupportMultipleWindows(true)
         binding.webViewPortal.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 binding.progressLogin.progress = newProgress
@@ -96,14 +122,15 @@ class LoginActivity : AppCompatActivity() {
             }
 
             val pageText = decodeJavascriptString(rawValue)
-            val cookie = CookieManager.getInstance().getCookie(url).orEmpty()
-            val urlChanged = url.removeSuffix("/") != PESU_PORTAL_URL.removeSuffix("/")
-            val looksAuthenticated = cookie.isNotBlank() && urlChanged && !htmlParser.isLoginPage(pageText)
+            val cookie = getBestSessionCookie(url)
+            val looksAuthenticated = cookie.isNotBlank() && !htmlParser.isLoginPage(pageText)
 
             if (looksAuthenticated) {
                 completedLogin = true
+                binding.textLoginStatus.setText(R.string.login_detected)
                 preferencesManager.saveBackendCookie(cookie)
                 preferencesManager.saveBackendUrl(PreferencesManager.DEFAULT_BACKEND_URL)
+                CookieManager.getInstance().flush()
                 navigateNext()
             } else {
                 binding.textLoginStatus.setText(R.string.login_status_waiting)
@@ -113,6 +140,9 @@ class LoginActivity : AppCompatActivity() {
 
     private fun navigateNext() {
         Toast.makeText(this, R.string.login_success, Toast.LENGTH_SHORT).show()
+        if (preferencesManager.isSetupDone()) {
+            BackgroundSyncService.start(this)
+        }
         val destination = if (preferencesManager.isSetupDone()) {
             Intent(this, MainActivity::class.java)
         } else {
@@ -125,7 +155,34 @@ class LoginActivity : AppCompatActivity() {
 
     private fun clearWebViewCookies() {
         CookieManager.getInstance().removeAllCookies(null)
+        CookieManager.getInstance().removeSessionCookies(null)
         CookieManager.getInstance().flush()
+    }
+
+    private fun getBestSessionCookie(currentUrl: String): String {
+        val cookieManager = CookieManager.getInstance()
+        val candidates = linkedSetOf(
+            currentUrl,
+            PreferencesManager.DEFAULT_BACKEND_URL,
+            PESU_PORTAL_URL,
+            ACADEMY_ROOT_URL
+        )
+
+        URI.create(currentUrl).host?.takeIf { it.isNotBlank() }?.let { host ->
+            candidates.add("https://$host/")
+        }
+
+        return candidates
+            .mapNotNull { candidate -> cookieManager.getCookie(candidate)?.trim() }
+            .firstOrNull { cookie ->
+                cookie.isNotBlank() && SESSION_COOKIE_NAMES.any { name ->
+                    cookie.contains("$name=", ignoreCase = true)
+                }
+            }
+            ?: candidates
+                .mapNotNull { candidate -> cookieManager.getCookie(candidate)?.trim() }
+                .firstOrNull { it.isNotBlank() }
+                .orEmpty()
     }
 
     private fun decodeJavascriptString(rawValue: String): String {
@@ -133,6 +190,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        loginWatcherHandler.removeCallbacks(loginWatcher)
         binding.webViewPortal.apply {
             stopLoading()
             destroy()
@@ -143,5 +201,8 @@ class LoginActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_FORCE_RELOGIN = "force_relogin"
         private const val PESU_PORTAL_URL = "https://www.pesuacademy.com/Academy/"
+        private const val ACADEMY_ROOT_URL = "https://www.pesuacademy.com/"
+        private const val LOGIN_WATCH_INTERVAL_MS = 1200L
+        private val SESSION_COOKIE_NAMES = listOf("JSESSIONID", "PHPSESSID", "AWSALB", "AWSALBCORS")
     }
 }

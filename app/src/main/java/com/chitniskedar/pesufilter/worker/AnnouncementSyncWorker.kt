@@ -40,17 +40,19 @@ class AnnouncementSyncWorker(
             preferencesManager.saveAnnouncements(parsedAnnouncements)
 
             val relevantAnnouncements = parsedAnnouncements.filter { announcement ->
-                filterManager.shouldShow(announcement.fullText)
+                filterManager.shouldShow(announcement.title + "\n" + announcement.fullText)
             }
 
             relevantAnnouncements.forEach { announcement ->
                 val shouldNotify = !preferencesManager.hasSeenAnnouncement(announcement.stableId)
                 if (shouldNotify) {
-                    notificationHelper.showAnnouncementNotification(
+                    val wasPosted = notificationHelper.showAnnouncementNotification(
                         announcement = announcement,
-                        priority = filterManager.priorityFor(announcement.fullText)
+                        priority = filterManager.priorityFor(announcement.title + "\n" + announcement.fullText)
                     )
-                    preferencesManager.markAnnouncementSeen(announcement.stableId)
+                    if (wasPosted) {
+                        preferencesManager.markAnnouncementSeen(announcement.stableId)
+                    }
                 }
             }
 

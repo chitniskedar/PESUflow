@@ -3,6 +3,14 @@
     <color name="midnight_black_soft">#14161C</color>
     <color name="deep_ocean">#10131A</color>
     <color name="ink_blue_soft">#1B1F29</color>
+    <color name="slate_panel">#171C26</color>
+    <color name="slate_card">#1D2430</color>
+    <color name="navy_accent">#274766</color>
+    <color name="navy_accent_soft">#20364D</color>
+    <color name="sky_tint">#BFD6F2</color>
+    <color name="emerald_tint">#6FC3AA</color>
+    <color name="amber_tint">#E0B168</color>
+    <color name="red_tint">#F06C6C</color>
     <color name="card_stroke">#2A2F38</color>
     <color name="chip_surface">#1C2027</color>
     <color name="button_secondary">#10161F</color>

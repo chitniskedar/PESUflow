@@ -5,6 +5,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -12,9 +15,12 @@ import androidx.core.content.ContextCompat
 import com.chitniskedar.pesufilter.R
 import com.chitniskedar.pesufilter.auth.LoginActivity
 import com.chitniskedar.pesufilter.databinding.ActivityMainBinding
+import com.chitniskedar.pesufilter.model.Announcement
+import com.chitniskedar.pesufilter.utils.FilterManager
+import com.chitniskedar.pesufilter.utils.NotificationHelper
 import com.chitniskedar.pesufilter.utils.PreferencesManager
 import com.chitniskedar.pesufilter.worker.AnnouncementScheduler
-import com.google.android.material.materialswitch.MaterialSwitch
+import com.chitniskedar.pesufilter.worker.BackgroundSyncService
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -23,6 +29,15 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var preferencesManager: PreferencesManager
+    private lateinit var notificationHelper: NotificationHelper
+    private lateinit var filterManager: FilterManager
+    private val autoRefreshHandler = Handler(Looper.getMainLooper())
+    private val autoRefreshRunnable = object : Runnable {
+        override fun run() {
+            triggerRefresh(showToast = false)
+            autoRefreshHandler.postDelayed(this, AUTO_REFRESH_INTERVAL_MS)
+        }
+    }
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -36,6 +51,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         preferencesManager = PreferencesManager(this)
+        notificationHelper = NotificationHelper(this)
+        filterManager = FilterManager(preferencesManager)
         if (!routeIfNeeded()) {
             finish()
             return
@@ -45,7 +62,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         AnnouncementScheduler.schedulePeriodic(this)
-        setupCategoryToggles()
+        BackgroundSyncService.start(this)
         setupButtons()
         requestNotificationPermissionIfNeeded()
         refreshUi()
@@ -58,11 +75,18 @@ class MainActivity : AppCompatActivity() {
             return
         }
         refreshUi()
+        startAutoRefresh()
+    }
+
+    override fun onPause() {
+        autoRefreshHandler.removeCallbacks(autoRefreshRunnable)
+        super.onPause()
     }
 
     private fun routeIfNeeded(): Boolean {
         return when {
             !preferencesManager.hasActiveSession() -> {
+                BackgroundSyncService.stop(this)
                 startActivity(
                     Intent(this, LoginActivity::class.java).apply {
                         putExtra(LoginActivity.EXTRA_FORCE_RELOGIN, preferencesManager.isSetupDone())
@@ -77,21 +101,6 @@ class MainActivity : AppCompatActivity() {
             }
 
             else -> true
-        }
-    }
-
-    private fun setupCategoryToggles() {
-        bindToggle(binding.switchExams, PreferencesManager.CATEGORY_EXAM)
-        bindToggle(binding.switchAssignments, PreferencesManager.CATEGORY_NOTICE)
-        bindToggle(binding.switchInternships, PreferencesManager.CATEGORY_INTERNSHIP)
-        bindToggle(binding.switchGeneral, PreferencesManager.CATEGORY_GENERAL)
-    }
-
-    private fun bindToggle(toggle: MaterialSwitch, category: String) {
-        toggle.isChecked = preferencesManager.isCategoryEnabled(category)
-        toggle.setOnCheckedChangeListener { _, isChecked ->
-            preferencesManager.setCategoryEnabled(category, isChecked)
-            refreshUi()
         }
     }
 
@@ -113,25 +122,50 @@ class MainActivity : AppCompatActivity() {
                 )
                 return@setOnClickListener
             }
-            AnnouncementScheduler.enqueueImmediate(this)
-            Toast.makeText(this, R.string.refresh_started, Toast.LENGTH_SHORT).show()
-            refreshUi()
+            triggerRefresh(showToast = true)
         }
 
         binding.buttonOpenLog.setOnClickListener {
             startActivity(Intent(this, HiddenLogActivity::class.java))
+        }
+
+        binding.buttonRunFilterTest.setOnClickListener {
+            runFilterTestMode()
+        }
+
+        binding.buttonLogout.setOnClickListener {
+            logout()
         }
     }
 
     private fun refreshUi() {
         bindProfileSummary()
         bindSyncStatus()
+        bindNotificationStatus()
+        bindSavedAnnouncementCount()
+        bindAutoRefreshStatus()
+        bindActiveFilterChips()
     }
 
     private fun bindProfileSummary() {
         val branch = preferencesManager.getSelectedBranch().orEmpty()
         val semester = preferencesManager.getSelectedSemester()?.toString().orEmpty()
         binding.textProfileSummary.text = getString(R.string.profile_summary, branch, semester)
+    }
+
+    private fun bindActiveFilterChips() {
+        val batch = preferencesManager.getSelectedBranch().orEmpty().ifBlank { "Not set" }
+        val semester = preferencesManager.getSelectedSemester()?.toString().orEmpty().ifBlank { "Not set" }
+        val enabledCategories = buildList {
+            if (preferencesManager.isCategoryEnabled(PreferencesManager.CATEGORY_EXAM)) add("Exams")
+            if (preferencesManager.isCategoryEnabled(PreferencesManager.CATEGORY_NOTICE)) add("Notices")
+            if (preferencesManager.isCategoryEnabled(PreferencesManager.CATEGORY_INTERNSHIP)) add("Internships")
+            if (preferencesManager.isCategoryEnabled(PreferencesManager.CATEGORY_GENERAL)) add("General")
+        }.joinToString(", ").ifBlank { "None" }
+
+        binding.textBatchChip.text = getString(R.string.profile_batch_chip, batch)
+        binding.textSemesterChip.text = getString(R.string.profile_semester_chip, semester)
+        binding.textCategoryChip.text = getString(R.string.profile_category_chip, enabledCategories)
     }
 
     private fun bindSyncStatus() {
@@ -145,6 +179,73 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun bindNotificationStatus() {
+        binding.textNotificationStatus.text = getString(
+            if (notificationHelper.canPostNotifications()) {
+                R.string.notification_status_ready_short
+            } else {
+                R.string.notification_status_blocked_short
+            }
+        )
+    }
+
+    private fun bindSavedAnnouncementCount() {
+        binding.textSavedAnnouncementCount.text = getString(
+            R.string.saved_announcements_count,
+            preferencesManager.getSavedAnnouncements().size
+        )
+    }
+
+    private fun bindAutoRefreshStatus() {
+        binding.textAutoRefreshStatus.text = getString(R.string.auto_refresh_status)
+    }
+
+    private fun triggerRefresh(showToast: Boolean) {
+        AnnouncementScheduler.enqueueImmediate(this)
+        if (showToast) {
+            Toast.makeText(this, R.string.refresh_started, Toast.LENGTH_SHORT).show()
+        }
+        refreshUi()
+    }
+
+    private fun startAutoRefresh() {
+        autoRefreshHandler.removeCallbacks(autoRefreshRunnable)
+        if (!preferencesManager.hasActiveSession()) {
+            return
+        }
+        autoRefreshHandler.postDelayed(autoRefreshRunnable, AUTO_REFRESH_INTERVAL_MS)
+    }
+
+    private fun runFilterTestMode() {
+        val results = SAMPLE_TEST_ANNOUNCEMENTS.joinToString("\n\n") { announcement ->
+            val matches = filterManager.shouldShow(announcement.fullText)
+            val category = filterManager.categorize(announcement.fullText)
+            getString(
+                R.string.filter_test_result_line,
+                if (matches) getString(R.string.filter_test_match) else getString(R.string.filter_test_skip),
+                announcement.title,
+                category,
+                announcement.fullText
+            )
+        }
+
+        binding.textFilterTestHeader.visibility = View.VISIBLE
+        binding.textFilterTestResults.visibility = View.VISIBLE
+        binding.textFilterTestResults.text = results
+    }
+
+    private fun logout() {
+        autoRefreshHandler.removeCallbacks(autoRefreshRunnable)
+        preferencesManager.clearSession()
+        BackgroundSyncService.stop(this)
+        startActivity(
+            Intent(this, LoginActivity::class.java).apply {
+                putExtra(LoginActivity.EXTRA_FORCE_RELOGIN, true)
+            }
+        )
+        finish()
+    }
+
     private fun requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
@@ -155,5 +256,28 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private val DATE_FORMAT = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
+        private const val AUTO_REFRESH_INTERVAL_MS = 3 * 60 * 1000L
+        private val SAMPLE_TEST_ANNOUNCEMENTS = listOf(
+            Announcement(
+                title = "CSE 4th sem ISA timetable",
+                date = "Test",
+                fullText = "ISA timetable released for CSE 4th semester students."
+            ),
+            Announcement(
+                title = "ECE internship drive",
+                date = "Test",
+                fullText = "Internship opportunity open for ECE 6th semester students."
+            ),
+            Announcement(
+                title = "All students holiday notice",
+                date = "Test",
+                fullText = "General notice for all students across all branches and all semesters."
+            ),
+            Announcement(
+                title = "Assignment submission reminder",
+                date = "Test",
+                fullText = "Assignment submission notice for AIML 2nd semester."
+            )
+        )
     }
 }

@@ -28,9 +28,9 @@ class NotificationHelper(private val context: Context) {
     fun showAnnouncementNotification(
         announcement: Announcement,
         priority: AnnouncementPriority = AnnouncementPriority.HIGH
-    ) {
+    ): Boolean {
         if (!canPostNotifications()) {
-            return
+            return false
         }
 
         val contentIntent = PendingIntent.getActivity(
@@ -62,18 +62,19 @@ class NotificationHelper(private val context: Context) {
                 }
             )
             .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(contentIntent)
             .setAutoCancel(true)
             .build()
 
-        notificationManager.notify((System.currentTimeMillis() and 0x7FFFFFFF).toInt(), notification)
+        notificationManager.notify(announcement.stableId.hashCode(), notification)
+        return true
     }
 
-    fun showSessionExpiredNotification() {
+    fun showSessionExpiredNotification(): Boolean {
         if (!canPostNotifications()) {
-            return
+            return false
         }
 
         val contentIntent = PendingIntent.getActivity(
@@ -96,15 +97,30 @@ class NotificationHelper(private val context: Context) {
             .setContentIntent(contentIntent)
             .build()
 
-        notificationManager.notify((System.currentTimeMillis() and 0x7FFFFFFF).toInt(), notification)
+        notificationManager.notify(SESSION_EXPIRED_NOTIFICATION_ID, notification)
+        return true
     }
 
-    private fun canPostNotifications(): Boolean {
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+    fun canPostNotifications(): Boolean {
+        val hasRuntimePermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
+
+        if (!hasRuntimePermission || !notificationManager.areNotificationsEnabled()) {
+            return false
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = context.getSystemService(NotificationManager::class.java)
+            val channelImportance = manager.getNotificationChannel(CHANNEL_ID)?.importance
+            if (channelImportance == NotificationManager.IMPORTANCE_NONE) {
+                return false
+            }
+        }
+
+        return true
     }
 
     private fun createNotificationChannel() {
@@ -130,5 +146,6 @@ class NotificationHelper(private val context: Context) {
     companion object {
         const val CHANNEL_ID = "pesuflow_announcements"
         private const val MAX_BODY_LENGTH = 280
+        private const val SESSION_EXPIRED_NOTIFICATION_ID = 10_002
     }
 }

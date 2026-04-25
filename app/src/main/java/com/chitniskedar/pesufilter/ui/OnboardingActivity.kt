@@ -14,7 +14,9 @@ import com.chitniskedar.pesufilter.R
 import com.chitniskedar.pesufilter.auth.LoginActivity
 import com.chitniskedar.pesufilter.databinding.ActivityOnboardingBinding
 import com.chitniskedar.pesufilter.utils.PreferencesManager
+import com.chitniskedar.pesufilter.worker.BackgroundSyncService
 import com.chitniskedar.pesufilter.worker.AnnouncementScheduler
+import com.google.android.material.materialswitch.MaterialSwitch
 
 class OnboardingActivity : AppCompatActivity() {
 
@@ -45,7 +47,9 @@ class OnboardingActivity : AppCompatActivity() {
 
         setupPickers()
         restoreSavedProfile()
+        setupCategoryToggles()
         binding.buttonContinue.setOnClickListener { saveProfileAndContinue() }
+        binding.buttonResetFilters.setOnClickListener { resetFilterDefaults() }
         requestNotificationPermissionIfNeeded()
         updatePermissionState()
     }
@@ -59,17 +63,17 @@ class OnboardingActivity : AppCompatActivity() {
         val branchAdapter = ArrayAdapter.createFromResource(
             this,
             R.array.branch_options,
-            android.R.layout.simple_spinner_item
+            R.layout.item_spinner_selected
         ).apply {
-            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            setDropDownViewResource(R.layout.item_spinner_dropdown)
         }
 
         val semesterAdapter = ArrayAdapter.createFromResource(
             this,
             R.array.semester_options,
-            android.R.layout.simple_spinner_item
+            R.layout.item_spinner_selected
         ).apply {
-            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            setDropDownViewResource(R.layout.item_spinner_dropdown)
         }
 
         binding.spinnerBranch.adapter = branchAdapter
@@ -90,6 +94,32 @@ class OnboardingActivity : AppCompatActivity() {
         binding.spinnerSemester.setSelection(semesterIndex)
     }
 
+    private fun setupCategoryToggles() {
+        bindToggle(binding.switchExams, PreferencesManager.CATEGORY_EXAM)
+        bindToggle(binding.switchAssignments, PreferencesManager.CATEGORY_NOTICE)
+        bindToggle(binding.switchInternships, PreferencesManager.CATEGORY_INTERNSHIP)
+        bindToggle(binding.switchGeneral, PreferencesManager.CATEGORY_GENERAL)
+    }
+
+    private fun bindToggle(toggle: MaterialSwitch, category: String) {
+        toggle.isChecked = preferencesManager.isCategoryEnabled(category)
+        toggle.setOnCheckedChangeListener { _, isChecked ->
+            preferencesManager.setCategoryEnabled(category, isChecked)
+        }
+    }
+
+    private fun resetFilterDefaults() {
+        preferencesManager.setCategoryEnabled(PreferencesManager.CATEGORY_EXAM, true)
+        preferencesManager.setCategoryEnabled(PreferencesManager.CATEGORY_NOTICE, true)
+        preferencesManager.setCategoryEnabled(PreferencesManager.CATEGORY_INTERNSHIP, true)
+        preferencesManager.setCategoryEnabled(PreferencesManager.CATEGORY_GENERAL, true)
+
+        binding.switchExams.isChecked = true
+        binding.switchAssignments.isChecked = true
+        binding.switchInternships.isChecked = true
+        binding.switchGeneral.isChecked = true
+    }
+
     private fun saveProfileAndContinue() {
         val branch = binding.spinnerBranch.selectedItem?.toString().orEmpty()
         val semester = binding.spinnerSemester.selectedItem?.toString()?.toIntOrNull()
@@ -102,6 +132,7 @@ class OnboardingActivity : AppCompatActivity() {
         preferencesManager.saveUserProfile(branch, semester)
         AnnouncementScheduler.schedulePeriodic(this)
         AnnouncementScheduler.enqueueImmediate(this)
+        BackgroundSyncService.start(this)
         startActivity(Intent(this, MainActivity::class.java))
         finish()
     }
