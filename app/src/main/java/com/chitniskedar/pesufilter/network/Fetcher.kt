@@ -15,8 +15,11 @@ class Fetcher {
             connectTimeout = CONNECT_TIMEOUT_MS
             readTimeout = READ_TIMEOUT_MS
             setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+            setRequestProperty("Accept-Language", "en-US,en;q=0.9")
             setRequestProperty("User-Agent", USER_AGENT)
             setRequestProperty("Cache-Control", "no-cache")
+            setRequestProperty("Pragma", "no-cache")
+            setRequestProperty("Referer", "https://www.pesuacademy.com/Academy/")
             cookie?.takeIf { it.isNotBlank() }?.let { setRequestProperty("Cookie", it) }
         }
 
@@ -40,11 +43,5 @@ class Fetcher {
         } finally {
             connection.disconnect()
         }
-    }
-
-    companion object {
-        private const val CONNECT_TIMEOUT_MS = 15_000
-        private const val READ_TIMEOUT_MS = 15_000
-        private const val USER_AGENT = "Mozilla/5.0 (Android) PESUFlow/1.0"
     }
 }

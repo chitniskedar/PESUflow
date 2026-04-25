@@ -36,7 +36,10 @@ class AnnouncementSyncWorker(
             }
 
             val parsedAnnouncements = parser.parseAnnouncements(html, backendUrl)
-
+            if (parsedAnnouncements.isEmpty()) {
+                preferencesManager.setLastSyncError("No announcements found in PESU response")
+                return Result.retry()
+            }
             preferencesManager.saveAnnouncements(parsedAnnouncements)
 
             val relevantAnnouncements = parsedAnnouncements.filter { announcement ->

@@ -129,7 +129,7 @@ class LoginActivity : AppCompatActivity() {
                 completedLogin = true
                 binding.textLoginStatus.setText(R.string.login_detected)
                 preferencesManager.saveBackendCookie(cookie)
-                preferencesManager.saveBackendUrl(PreferencesManager.DEFAULT_BACKEND_URL)
+                preferencesManager.saveBackendUrl(resolveAnnouncementUrl(url))
                 CookieManager.getInstance().flush()
                 navigateNext()
             } else {

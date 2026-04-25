@@ -12,7 +12,7 @@
     <string name="dashboard_filters_title">Active Filters</string>
     <string name="dashboard_filters_subtitle">Your current branch, semester, and content preferences.</string>
     <string name="dashboard_recent_title">Quick Actions</string>
-    <string name="dashboard_recent_subtitle">Tune filters, inspect saved announcements, or run the temporary tester.</string>
+    <string name="dashboard_recent_subtitle">Tune filters, inspect saved announcements, or replay recent announcements.</string>
     <string name="filter_categories">Show Notifications For</string>
     <string name="exams_label">Exams &amp; Timetables</string>
     <string name="assignments_label">Academic Notices</string>
@@ -56,7 +56,6 @@
     <string name="preferences_hint">Choose the notification categories you want to receive.</string>
     <string name="refresh_now">Refresh Now</string>
     <string name="refresh_started">Announcement refresh started.</string>
-    <string name="history_seeded">Loaded a few announcements into saved history for testing.</string>
     <string name="replay_saved_started">Replaying notifications from saved history.</string>
     <string name="replay_saved_none">No saved announcements available to replay.</string>
     <string name="replay_saved_no_matches">No saved announcements match the current filters.</string>
@@ -72,13 +71,6 @@
     <string name="notification_status_blocked">Blocked in permission or channel settings</string>
     <string name="notification_status_ready_short">Notifications ready</string>
     <string name="notification_status_blocked_short">Notifications blocked</string>
-    <string name="filter_test_title">Temporary Filter Test Mode</string>
-    <string name="filter_test_description">Run sample announcements through your current branch, semester, and category filters.</string>
-    <string name="run_filter_test">Run Filter Test</string>
-    <string name="filter_test_result_header">Test results</string>
-    <string name="filter_test_match">MATCH</string>
-    <string name="filter_test_skip">SKIP</string>
-    <string name="filter_test_result_line">%1$s  %2$s\nCategory: %3$s\n%4$s</string>
     <string name="no_sync_yet">No sync has finished yet.</string>
     <string name="last_sync_success">Last sync: %1$s</string>
     <string name="last_sync_error">Last sync error: %1$s</string>

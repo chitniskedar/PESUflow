@@ -7,7 +7,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -126,12 +125,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         binding.buttonOpenLog.setOnClickListener {
-            ensureSavedHistoryForTesting()
             startActivity(Intent(this, HiddenLogActivity::class.java))
-        }
-
-        binding.buttonRunFilterTest.setOnClickListener {
-            runFilterTestMode()
         }
 
         binding.buttonReplaySavedNotifications.setOnClickListener {
@@ -221,25 +215,6 @@ class MainActivity : AppCompatActivity() {
         autoRefreshHandler.postDelayed(autoRefreshRunnable, AUTO_REFRESH_INTERVAL_MS)
     }
 
-    private fun runFilterTestMode() {
-        val results = SAMPLE_TEST_ANNOUNCEMENTS.joinToString("\n\n") { announcement ->
-            val combinedText = announcement.title + "\n" + announcement.fullText
-            val matches = filterManager.shouldShow(combinedText)
-            val category = filterManager.categorize(combinedText)
-            getString(
-                R.string.filter_test_result_line,
-                if (matches) getString(R.string.filter_test_match) else getString(R.string.filter_test_skip),
-                announcement.title,
-                category,
-                announcement.fullText
-            )
-        }
-
-        binding.textFilterTestHeader.visibility = View.VISIBLE
-        binding.textFilterTestResults.visibility = View.VISIBLE
-        binding.textFilterTestResults.text = results
-    }
-
     private fun replaySavedNotifications() {
         if (!notificationHelper.canPostNotifications()) {
             Toast.makeText(this, R.string.replay_saved_blocked, Toast.LENGTH_SHORT).show()
@@ -275,16 +250,6 @@ class MainActivity : AppCompatActivity() {
         ).show()
     }
 
-    private fun ensureSavedHistoryForTesting() {
-        if (preferencesManager.getSavedAnnouncements().isNotEmpty()) {
-            return
-        }
-
-        preferencesManager.saveAnnouncements(SAVED_HISTORY_TEST_ANNOUNCEMENTS)
-        refreshUi()
-        Toast.makeText(this, R.string.history_seeded, Toast.LENGTH_SHORT).show()
-    }
-
     private fun logout() {
         autoRefreshHandler.removeCallbacks(autoRefreshRunnable)
         preferencesManager.clearSession()
@@ -308,109 +273,5 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private val DATE_FORMAT = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
         private const val AUTO_REFRESH_INTERVAL_MS = 3 * 60 * 1000L
-        private val SAMPLE_TEST_ANNOUNCEMENTS = listOf(
-            Announcement(
-                title = "CSE 4th sem ISA timetable",
-                date = "Test",
-                fullText = "ISA timetable released for CSE 4th semester students."
-            ),
-            Announcement(
-                title = "ECE internship drive",
-                date = "Test",
-                fullText = "Internship opportunity open for ECE 6th semester students."
-            ),
-            Announcement(
-                title = "All students holiday notice",
-                date = "Test",
-                fullText = "General notice for all students across all branches and all semesters."
-            ),
-            Announcement(
-                title = "Assignment submission reminder",
-                date = "Test",
-                fullText = "Assignment submission notice for AIML 2nd semester."
-            )
-        )
-        private val SAVED_HISTORY_TEST_ANNOUNCEMENTS = listOf(
-            Announcement(
-                title = "Executive M.Tech VLSI - Jul Cohort 2025 Batch - Sem 2 ISA 2 Timetable",
-                date = "24-April-2026",
-                fullText = "Executive M.Tech VLSI - Jul Cohort 2025 Batch - Sem 2 ISA 2 Timetable"
-            ),
-            Announcement(
-                title = "Minor in MedTech (Medical Technologies)",
-                date = "24-April-2026",
-                fullText = "Minor in MedTech (Medical Technologies)"
-            ),
-            Announcement(
-                title = "B.Com 6th Sem - ISA 2 Timetable - EC Campus",
-                date = "20-April-2026",
-                fullText = "B.Com 6th Sem - ISA 2 Timetable - EC Campus"
-            ),
-            Announcement(
-                title = "B.Pharm 8th Sem ISA 2 Theory Timetable",
-                date = "20-April-2026",
-                fullText = "B.Pharm 8th Sem ISA 2 Theory Timetable"
-            ),
-            Announcement(
-                title = "Notification #204 ESA MAY 2026 Regular Registration",
-                date = "20-April-2026",
-                fullText = "Notification #204 ESA MAY 2026 Regular Registration"
-            ),
-            Announcement(
-                title = "B.Pharm 6th Sem - ISA 2 Theory Timetable",
-                date = "17-April-2026",
-                fullText = "B.Pharm 6th Sem - ISA 2 Theory Timetable"
-            ),
-            Announcement(
-                title = "B.Pharm 4th Sem - ISA 2 Practical Timetable",
-                date = "17-April-2026",
-                fullText = "B.Pharm 4th Sem - ISA 2 Practical Timetable"
-            ),
-            Announcement(
-                title = "B.Pharm 6th Sem - ISA 2 Practical Timetable",
-                date = "17-April-2026",
-                fullText = "B.Pharm 6th Sem - ISA 2 Practical Timetable"
-            ),
-            Announcement(
-                title = "B.Pharm 4th Sem - ISA 2 Theory Timetable",
-                date = "17-April-2026",
-                fullText = "B.Pharm 4th Sem - ISA 2 Theory Timetable"
-            ),
-            Announcement(
-                title = "BBA & BBA-Analytics 4th sem - ISA 2 Timetable",
-                date = "17-April-2026",
-                fullText = "BBA & BBA-Analytics 4th sem - ISA 2 Timetable"
-            ),
-            Announcement(
-                title = "BBA & BBA-Analytics 2nd sem - ISA 2 Timetable",
-                date = "17-April-2026",
-                fullText = "BBA & BBA-Analytics 2nd sem - ISA 2 Timetable"
-            ),
-            Announcement(
-                title = "B.Tech ECE 8th Sem - ISA 2 Timetable - EC Campus",
-                date = "16-April-2026",
-                fullText = "B.Tech ECE 8th Sem - ISA 2 Timetable - EC Campus"
-            ),
-            Announcement(
-                title = "M.Pharm 1st Sem - ISA 1 Practical Timetable",
-                date = "16-April-2026",
-                fullText = "M.Pharm 1st Sem - ISA 1 Practical Timetable"
-            ),
-            Announcement(
-                title = "Nursing 8th Sem - ISA 2 Theory and Practical Timetable",
-                date = "16-April-2026",
-                fullText = "Nursing 8th Sem - ISA 2 Theory and Practical Timetable"
-            ),
-            Announcement(
-                title = "Nursing 6th Sem - ISA 2 Theory and Practical Timetable",
-                date = "16-April-2026",
-                fullText = "Nursing 6th Sem - ISA 2 Theory and Practical Timetable"
-            ),
-            Announcement(
-                title = "Nursing 4th Sem - ISA 2 Theory and Practical Timetable",
-                date = "16-April-2026",
-                fullText = "Nursing 4th Sem - ISA 2 Theory and Practical Timetable"
-            )
-        )
     }
 }

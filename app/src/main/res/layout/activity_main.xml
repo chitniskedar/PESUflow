@@ -272,14 +272,6 @@
                     android:text="@string/open_history" />
 
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/buttonRunFilterTest"
-                    style="@style/Widget.PESUflow.Button.Secondary"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="@string/run_filter_test" />
-
-                <com.google.android.material.button.MaterialButton
                     android:id="@+id/buttonReplaySavedNotifications"
                     style="@style/Widget.PESUflow.Button.Secondary"
                     android:layout_width="match_parent"
@@ -296,25 +288,6 @@
                     android:text="@string/log_out" />
             </LinearLayout>
 
-            <TextView
-                android:id="@+id/textFilterTestHeader"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:text="@string/filter_test_result_header"
-                android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                android:textColor="@color/pure_white"
-                android:textStyle="bold"
-                android:visibility="gone" />
-
-            <TextView
-                android:id="@+id/textFilterTestResults"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:lineSpacingExtra="4dp"
-                android:textColor="@color/mist_white"
-                android:visibility="gone" />
         </LinearLayout>
 
     </LinearLayout>
