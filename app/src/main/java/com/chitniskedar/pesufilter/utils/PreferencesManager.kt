@@ -111,13 +111,27 @@ class PreferencesManager(context: Context) {
     }
 
     fun saveBackendCookie(cookie: String?) {
-        prefs.edit().putString(KEY_BACKEND_COOKIE, cookie).apply()
+        prefs.edit()
+            .putString(KEY_BACKEND_COOKIE, cookie)
+            .putInt(KEY_LOGIN_PAGE_HIT_COUNT, 0)
+            .apply()
     }
 
     fun clearSession() {
         prefs.edit()
             .remove(KEY_BACKEND_COOKIE)
+            .remove(KEY_LOGIN_PAGE_HIT_COUNT)
             .apply()
+    }
+
+    fun incrementLoginPageHitCount(): Int {
+        val next = prefs.getInt(KEY_LOGIN_PAGE_HIT_COUNT, 0) + 1
+        prefs.edit().putInt(KEY_LOGIN_PAGE_HIT_COUNT, next).apply()
+        return next
+    }
+
+    fun resetLoginPageHitCount() {
+        prefs.edit().putInt(KEY_LOGIN_PAGE_HIT_COUNT, 0).apply()
     }
 
     fun clearAnnouncements() {
@@ -157,6 +171,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_LAST_SYNC_ERROR = "last_sync_error"
         private const val KEY_BACKEND_URL = "backend_url"
         private const val KEY_BACKEND_COOKIE = "backend_cookie"
+        private const val KEY_LOGIN_PAGE_HIT_COUNT = "login_page_hit_count"
         const val DEFAULT_BACKEND_URL = "https://www.pesuacademy.com/Academy/s/studentProfilePESUAdmin?menuId=667"
     }
 }

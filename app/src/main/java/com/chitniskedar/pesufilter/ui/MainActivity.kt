@@ -14,7 +14,6 @@ import androidx.core.content.ContextCompat
 import com.chitniskedar.pesufilter.R
 import com.chitniskedar.pesufilter.auth.LoginActivity
 import com.chitniskedar.pesufilter.databinding.ActivityMainBinding
-import com.chitniskedar.pesufilter.model.Announcement
 import com.chitniskedar.pesufilter.utils.FilterManager
 import com.chitniskedar.pesufilter.utils.NotificationHelper
 import com.chitniskedar.pesufilter.utils.PreferencesManager

@@ -124,27 +124,21 @@ class LoginActivity : AppCompatActivity() {
             val pageText = decodeJavascriptString(rawValue)
             val cookie = getBestSessionCookie(url)
             val looksAuthenticated = cookie.isNotBlank() && !htmlParser.isLoginPage(pageText)
+            val announcementContextReached = isAnnouncementContext(url, pageText)
 
-            if (looksAuthenticated) {
+            if (looksAuthenticated && announcementContextReached) {
                 completedLogin = true
                 binding.textLoginStatus.setText(R.string.login_detected)
                 preferencesManager.saveBackendCookie(cookie)
                 preferencesManager.saveBackendUrl(resolveAnnouncementUrl(url))
                 CookieManager.getInstance().flush()
                 navigateNext()
+            } else if (looksAuthenticated) {
+                preferencesManager.saveBackendCookie(cookie)
+                binding.textLoginStatus.setText(R.string.login_status_open_announcements)
             } else {
                 binding.textLoginStatus.setText(R.string.login_status_waiting)
             }
-        }
-    }
-
-    private fun resolveAnnouncementUrl(currentUrl: String): String {
-        // If we're already on a specific page that has announcements, use it.
-        // Otherwise, fall back to the default student profile page which contains the announcement list.
-        return if (currentUrl.contains("menuId=667")) {
-            currentUrl
-        } else {
-            PreferencesManager.DEFAULT_BACKEND_URL
         }
     }
 
@@ -197,6 +191,49 @@ class LoginActivity : AppCompatActivity() {
 
     private fun decodeJavascriptString(rawValue: String): String {
         return runCatching { JSONArray("[$rawValue]").getString(0) }.getOrDefault("")
+    }
+
+    private fun resolveAnnouncementUrl(currentUrl: String): String {
+        val normalized = currentUrl.trim()
+        if (!normalized.startsWith("https://www.pesuacademy.com/", ignoreCase = true)) {
+            return PreferencesManager.DEFAULT_BACKEND_URL
+        }
+
+        return runCatching {
+            val uri = URI(normalized)
+            val queryPairs = uri.rawQuery
+                ?.split("&")
+                ?.mapNotNull { pair ->
+                    val index = pair.indexOf('=')
+                    if (index <= 0) null else pair.substring(0, index) to pair.substring(index + 1)
+                }
+                .orEmpty()
+
+            val menuId = queryPairs.firstOrNull { it.first == "menuId" }?.second
+            if (menuId.isNullOrBlank()) {
+                PreferencesManager.DEFAULT_BACKEND_URL
+            } else {
+                "https://www.pesuacademy.com/Academy/s/studentProfilePESUAdmin?menuId=$menuId"
+            }
+        }.getOrDefault(PreferencesManager.DEFAULT_BACKEND_URL)
+    }
+
+    private fun isAnnouncementContext(currentUrl: String, pageText: String): Boolean {
+        val normalizedUrl = currentUrl.lowercase()
+        val normalizedText = pageText.lowercase()
+
+        val urlLooksLikeAnnouncementPage =
+            normalizedUrl.contains("menuid=") ||
+                normalizedUrl.contains("announcement") ||
+                normalizedUrl.contains("studentprofilepesuadmin")
+
+        val pageLooksLikeAnnouncementPage =
+            normalizedText.contains("announcement") ||
+                normalizedText.contains("circular") ||
+                normalizedText.contains("notice") ||
+                normalizedText.contains("timetable")
+
+        return urlLooksLikeAnnouncementPage || pageLooksLikeAnnouncementPage
     }
 
     override fun onDestroy() {

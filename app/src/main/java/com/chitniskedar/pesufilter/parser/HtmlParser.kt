@@ -12,11 +12,29 @@ class HtmlParser {
         }
 
         val doc = Jsoup.parse(html, baseUrl)
-        val announcementElements = doc.select(
-            ".elem-info-wrapper, .announcement-item, .media, .list-group-item, .card, tr"
-        ).toList().filter { looksLikeAnnouncementCard(it) }
+        val primaryCandidates = doc.select(
+            ".elem-info-wrapper, .announcement-item, .media, .list-group-item, .card, tr, li"
+        ).toList()
+        val announcements = primaryCandidates
+            .filter { element -> looksLikeAnnouncementCard(element) }
+            .ifEmpty {
+                doc.select("tr, li, .media, .card, .list-group-item, div")
+                    .toList()
+                    .filter { element -> element.text().length >= 12 }
+                    .filter { element -> looksLikeAnnouncementCard(element) }
+            }
+            .ifEmpty {
+                // Broad fallback: keep likely content containers so sync does not fail silently.
+                doc.select("tr, li, .media, .card, .list-group-item, div, p")
+                    .toList()
+                    .filter { element ->
+                        val text = element.text().trim()
+                        val hasLink = element.select("a[href]").isNotEmpty()
+                        text.length >= 18 && (hasLink || text.split(Regex("\\s+")).size >= 4)
+                    }
+            }
 
-        return announcementElements.mapNotNull { element ->
+        return announcements.mapNotNull { element ->
             val rawTitle = extractTitle(element)
             val date = extractDate(element)
             val fullText = cleanFullText(element.text(), rawTitle, date)
@@ -40,29 +58,69 @@ class HtmlParser {
         }
 
         val normalized = html.lowercase()
-        val loginMarkers = listOf(
-            "sign in",
+        val loginSignals = listOf(
             "forgot your password",
             "username",
             "password",
-            "captcha",
-            "verify and sign in"
+            "otp",
+            "captcha"
+        )
+        val positiveAnnouncementSignals = listOf(
+            "announcement",
+            "circular",
+            "notice",
+            "timetable",
+            "retest",
+            "internship"
         )
 
-        return loginMarkers.count { normalized.contains(it) } >= 2
+        val hasLoginFormSignal = normalized.contains("sign in") || normalized.contains("login")
+        val loginSignalCount = loginSignals.count { marker -> normalized.contains(marker) }
+        val announcementSignalCount = positiveAnnouncementSignals.count { marker -> normalized.contains(marker) }
+
+        return hasLoginFormSignal && loginSignalCount >= 2 && announcementSignalCount == 0
+    }
+
+    fun isUnavailablePage(html: String): Boolean {
+        if (html.isBlank()) {
+            return false
+        }
+        val normalized = html.lowercase()
+        return normalized.contains("sorry the page you are looking for is not available") ||
+            normalized.contains("page you are looking for is not available") ||
+            normalized.contains("requested page is not available")
+    }
+
+    fun extractAnnouncementUrls(html: String, baseUrl: String = ""): List<String> {
+        if (html.isBlank()) {
+            return emptyList()
+        }
+        val doc = Jsoup.parse(html, baseUrl)
+        return doc.select("a[href]")
+            .mapNotNull { link ->
+                val href = link.absUrl("href").ifBlank { link.attr("href") }
+                val normalized = href.trim()
+                if (normalized.isBlank()) {
+                    null
+                } else {
+                    normalized
+                }
+            }
+            .filter { url ->
+                url.startsWith("https://www.pesuacademy.com/", ignoreCase = true) &&
+                    url.contains("menuId=") &&
+                    (url.contains("studentProfilePESUAdmin", ignoreCase = true) ||
+                        url.contains("announcement", ignoreCase = true) ||
+                        url.contains("notice", ignoreCase = true))
+            }
+            .distinct()
+            .take(10)
     }
 
     private fun cleanTitle(rawTitle: String): String {
-        if (rawTitle.isBlank()) {
-            return rawTitle
-        }
-
         return rawTitle
-            .lines()
-            .map { it.trim() }
-            .firstOrNull { it.isNotBlank() }
-            ?.replace(Regex("\\s+"), " ")
-            .orEmpty()
+            .replace(Regex("\\s+"), " ")
+            .trim()
     }
 
     private fun cleanFullText(rawText: String, rawTitle: String, date: String): String {
@@ -129,15 +187,25 @@ class HtmlParser {
 
     private fun looksLikeAnnouncementCard(element: Element): Boolean {
         val normalized = element.text().lowercase()
-        if (normalized.length < 24) {
+        if (normalized.length < 12) {
             return false
+        }
+        if (element.select("a[href]").isNotEmpty()) {
+            return true
         }
         return looksLikeDate(normalized) ||
             normalized.contains("announcement") ||
             normalized.contains("timetable") ||
             normalized.contains("notice") ||
             normalized.contains("semester") ||
-            normalized.contains("internship")
+            normalized.contains("internship") ||
+            normalized.contains("isa") ||
+            normalized.contains("esa") ||
+            normalized.contains("calendar") ||
+            normalized.contains("circular") ||
+            normalized.contains("exam") ||
+            normalized.contains("retest") ||
+            normalized.contains("quiz")
     }
 
     private fun looksLikeDate(value: String): Boolean {

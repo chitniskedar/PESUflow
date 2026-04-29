@@ -32,6 +32,7 @@
     <string name="login_subtitle">Use the official PESU portal below. PESUFlow captures only the session cookie needed for announcement sync.</string>
     <string name="login_status_loading">Loading PESU Academy...</string>
     <string name="login_status_waiting">Complete the PESU login in the WebView. PESUFlow will continue automatically once your session is available.</string>
+    <string name="login_status_open_announcements">Login detected. Open the PESU announcements page once; PESUFlow will redirect automatically after that.</string>
     <string name="login_success">PESU session captured.</string>
     <string name="login_detected">Session detected. Redirecting...</string>
     <string name="reload_portal">Reload Portal</string>
