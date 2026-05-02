@@ -172,6 +172,6 @@ class PreferencesManager(context: Context) {
         private const val KEY_BACKEND_URL = "backend_url"
         private const val KEY_BACKEND_COOKIE = "backend_cookie"
         private const val KEY_LOGIN_PAGE_HIT_COUNT = "login_page_hit_count"
-        const val DEFAULT_BACKEND_URL = "https://www.pesuacademy.com/Academy/s/studentProfilePESUAdmin?menuId=667"
+        const val DEFAULT_BACKEND_URL = "https://www.pesuacademy.com/Academy/s/studentProfilePESUAdmin?menuId=667&url=studentProfilePESUAdmin&controllerMode=6411&actionType=5&id=0&selectedData=0"
     }
 }

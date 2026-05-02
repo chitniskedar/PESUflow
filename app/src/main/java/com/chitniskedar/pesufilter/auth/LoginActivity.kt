@@ -213,7 +213,7 @@ class LoginActivity : AppCompatActivity() {
             if (menuId.isNullOrBlank()) {
                 PreferencesManager.DEFAULT_BACKEND_URL
             } else {
-                "https://www.pesuacademy.com/Academy/s/studentProfilePESUAdmin?menuId=$menuId"
+                "https://www.pesuacademy.com/Academy/s/studentProfilePESUAdmin?menuId=$menuId&url=studentProfilePESUAdmin&controllerMode=6411&actionType=5&id=0&selectedData=0"
             }
         }.getOrDefault(PreferencesManager.DEFAULT_BACKEND_URL)
     }

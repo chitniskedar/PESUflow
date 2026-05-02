@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.webkit.CookieManager
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -82,6 +83,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun routeIfNeeded(): Boolean {
+        if (!preferencesManager.hasActiveSession()) {
+            recoverSessionCookie()?.let { recoveredCookie ->
+                preferencesManager.saveBackendCookie(recoveredCookie)
+            }
+        }
+
         return when {
             !preferencesManager.hasActiveSession() -> {
                 BackgroundSyncService.stop(this)
@@ -100,6 +107,19 @@ class MainActivity : AppCompatActivity() {
 
             else -> true
         }
+    }
+
+    private fun recoverSessionCookie(): String? {
+        val cookieManager = CookieManager.getInstance()
+        val candidates = listOf(
+            PreferencesManager.DEFAULT_BACKEND_URL,
+            "https://www.pesuacademy.com/Academy/",
+            "https://www.pesuacademy.com/"
+        )
+        return candidates
+            .asSequence()
+            .mapNotNull { cookieManager.getCookie(it)?.trim() }
+            .firstOrNull { it.isNotBlank() }
     }
 
     private fun setupButtons() {
@@ -227,7 +247,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         val relevantAnnouncements = savedAnnouncements.filter { announcement ->
-            filterManager.shouldShow(announcement.title + "\n" + announcement.fullText)
+            filterManager.shouldShow(
+                title = announcement.title,
+                fullText = announcement.fullText
+            )
         }
 
         if (relevantAnnouncements.isEmpty()) {

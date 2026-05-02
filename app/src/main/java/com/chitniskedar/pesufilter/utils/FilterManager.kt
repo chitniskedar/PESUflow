@@ -4,19 +4,36 @@ class FilterManager(
     private val preferencesManager: PreferencesManager
 ) {
 
-    fun shouldShow(text: String): Boolean {
-        val normalizedText = normalize(text)
-        val category = categorize(normalizedText)
+    fun shouldShow(title: String, fullText: String): Boolean {
+        val normalizedTitle = normalize(title)
+        val normalizedText = normalize("$title\n$fullText")
 
-        if (!preferencesManager.isCategoryEnabled(category)) {
+        // Hard gate from title first to avoid cross-item bleed from broad parsed body text.
+        if (!matchesBranchStrictFromTitle(normalizedTitle)) {
             return false
         }
 
+        // Stage 1: audience filter (branch + semester) first.
+        if (!matchesBranch(normalizedText)) {
+            return false
+        }
         if (!matchesSemester(normalizedText)) {
             return false
         }
 
-        return matchesBranch(normalizedText)
+        // Stage 2: category subfilter (exam/internship/notice/general).
+        val category = categorize(normalizedText)
+        if (category == PreferencesManager.CATEGORY_INTERNSHIP) {
+            val selectedSemester = preferencesManager.getSelectedSemester()
+            if (selectedSemester != null && selectedSemester < 3) {
+                return false
+            }
+        }
+        return preferencesManager.isCategoryEnabled(category)
+    }
+
+    fun shouldShow(text: String): Boolean {
+        return shouldShow(title = text, fullText = text)
     }
 
     fun categorize(text: String): String {
@@ -95,7 +112,15 @@ class FilterManager(
         }
 
         val branchesMentioned = extractBranches(content)
-        return branchesMentioned.isEmpty() || selectedBranch in branchesMentioned
+        if (branchesMentioned.isNotEmpty()) {
+            return selectedBranch in branchesMentioned
+        }
+
+        // If no explicit branch is present, gate by course-family mentions
+        // so BTech users do not receive BPharm/medical-only notices and vice versa.
+        val selectedFamily = branchFamilyFor(selectedBranch) ?: return true
+        val mentionedFamilies = extractMentionedBranchFamilies(content)
+        return mentionedFamilies.isEmpty() || selectedFamily in mentionedFamilies
     }
 
     private fun extractBranches(content: String): Set<String> {
@@ -111,6 +136,24 @@ class FilterManager(
     private fun containsPhrase(content: String, phrase: String): Boolean {
         return Regex("""(?<![a-z0-9])${Regex.escape(normalize(phrase))}(?![a-z0-9])""")
             .containsMatchIn(content)
+    }
+
+    private fun matchesBranchStrictFromTitle(normalizedTitle: String): Boolean {
+        val selectedBranch = preferencesManager.getSelectedBranch()?.uppercase() ?: return true
+        val selectedFamily = branchFamilyFor(selectedBranch)
+
+        val titleBranches = extractBranches(normalizedTitle)
+        if (titleBranches.isNotEmpty() && selectedBranch !in titleBranches) {
+            return false
+        }
+
+        if (selectedFamily != null) {
+            val titleFamilies = extractMentionedBranchFamilies(normalizedTitle)
+            if (titleFamilies.isNotEmpty() && selectedFamily !in titleFamilies) {
+                return false
+            }
+        }
+        return true
     }
 
     private fun semesterFromToken(rawValue: String): Int? {
@@ -149,6 +192,41 @@ class FilterManager(
             .replace(Regex("[^a-z0-9]+"), " ")
             .replace(Regex("\\s+"), " ")
             .trim()
+    }
+
+    private fun branchFamilyFor(branch: String): String? {
+        return when (branch.uppercase()) {
+            "CSE", "ECE", "EEE", "ME", "CIVIL", "AIML" -> BRANCH_FAMILY_BTECH
+            "PHARM" -> BRANCH_FAMILY_PHARM
+            "MBBS", "NURSING" -> BRANCH_FAMILY_MEDICAL
+            "BBA", "MBA", "BCOM", "BCA", "MCA" -> BRANCH_FAMILY_MANAGEMENT
+            else -> null
+        }
+    }
+
+    private fun extractMentionedBranchFamilies(content: String): Set<String> {
+        val mentioned = linkedSetOf<String>()
+        BRANCH_FAMILY_KEYWORDS.forEach { (family, phrases) ->
+            if (mentionsFamily(content, family, phrases)) {
+                mentioned.add(family)
+            }
+        }
+        return mentioned
+    }
+
+    private fun mentionsFamily(content: String, family: String, phrases: List<String>): Boolean {
+        if (phrases.any { phrase -> containsPhrase(content, phrase) }) {
+            return true
+        }
+
+        val tokens = content.split(Regex("\\s+")).filter { it.isNotBlank() }
+        return when (family) {
+            BRANCH_FAMILY_PHARM -> tokens.any { token -> token.startsWith("pharm") }
+            BRANCH_FAMILY_PG_TECH -> tokens.any { token ->
+                token == "mtech" || token == "m" || token.startsWith("mtech")
+            }
+            else -> false
+        }
     }
 
     companion object {
@@ -197,7 +275,7 @@ class FilterManager(
             "CSE" to listOf("cse", "computer science", "computer science and engineering"),
             "ECE" to listOf("ece", "electronics", "electronics and communication"),
             "EEE" to listOf("eee", "electrical", "electrical and electronics"),
-            "ME" to listOf("me", "mech", "mechanical"),
+            "ME" to listOf("mech", "mechanical"),
             "CIVIL" to listOf("civil"),
             "PHARM" to listOf("pharm", "pharmacy"),
             "MBA" to listOf("mba"),
@@ -208,6 +286,28 @@ class FilterManager(
             "MBBS" to listOf("mbbs"),
             "NURSING" to listOf("nursing"),
             "AIML" to listOf("aiml", "ai ml", "artificial intelligence", "machine learning")
+        )
+        private const val BRANCH_FAMILY_BTECH = "BTECH"
+        private const val BRANCH_FAMILY_PHARM = "PHARM"
+        private const val BRANCH_FAMILY_MEDICAL = "MEDICAL"
+        private const val BRANCH_FAMILY_MANAGEMENT = "MANAGEMENT"
+        private const val BRANCH_FAMILY_PG_TECH = "PG_TECH"
+        private val BRANCH_FAMILY_KEYWORDS = mapOf(
+            BRANCH_FAMILY_BTECH to listOf(
+                "btech", "b tech", "engineering", "all btech", "all b tech", "all engineering"
+            ),
+            BRANCH_FAMILY_PG_TECH to listOf(
+                "mtech", "m tech", "m.e", "m e", "master of technology"
+            ),
+            BRANCH_FAMILY_PHARM to listOf(
+                "bpharm", "b pharm", "pharm", "pharmacy", "pharma", "pharmd", "mpharm", "m pharm"
+            ),
+            BRANCH_FAMILY_MEDICAL to listOf(
+                "medical", "mbbs", "nursing", "all medical", "health science"
+            ),
+            BRANCH_FAMILY_MANAGEMENT to listOf(
+                "management", "mba", "bba", "bcom", "bca", "mca", "commerce"
+            )
         )
         private val SEMESTER_RANGE_REGEXES = listOf(
             Regex("""\b($SEMESTER_TOKEN)\s+(?:sem|semester)\s+(?:to|through)\s+($SEMESTER_TOKEN)\s+(?:sem|semester)\b"""),

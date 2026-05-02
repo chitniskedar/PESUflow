@@ -7,7 +7,7 @@ import java.net.URL
 
 class Fetcher {
 
-    fun fetchHtml(url: String, cookie: String? = null): String {
+    fun fetchHtml(url: String, cookie: String? = null): FetchResponse {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             instanceFollowRedirects = true
@@ -31,7 +31,7 @@ class Fetcher {
                 connection.errorStream ?: throw IllegalStateException("Request failed with HTTP $statusCode")
             }
 
-            BufferedReader(InputStreamReader(stream)).use { reader ->
+            val html = BufferedReader(InputStreamReader(stream)).use { reader ->
                 buildString {
                     var line: String?
                     while (reader.readLine().also { line = it } != null) {
@@ -40,10 +40,21 @@ class Fetcher {
                 }
             }.takeIf { it.isNotBlank() }
                 ?: throw IllegalStateException("Received empty HTML from backend")
+            FetchResponse(
+                html = html,
+                finalUrl = connection.url.toString(),
+                statusCode = statusCode
+            )
         } finally {
             connection.disconnect()
         }
     }
+
+    data class FetchResponse(
+        val html: String,
+        val finalUrl: String,
+        val statusCode: Int
+    )
 
     companion object {
         private const val CONNECT_TIMEOUT_MS = 15_000

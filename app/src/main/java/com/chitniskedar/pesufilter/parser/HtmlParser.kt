@@ -10,29 +10,16 @@ class HtmlParser {
         if (html.isBlank()) {
             return emptyList()
         }
+        if (!isLikelyAnnouncementPage(html, baseUrl)) {
+            return emptyList()
+        }
 
         val doc = Jsoup.parse(html, baseUrl)
-        val primaryCandidates = doc.select(
-            ".elem-info-wrapper, .announcement-item, .media, .list-group-item, .card, tr, li"
-        ).toList()
-        val announcements = primaryCandidates
-            .filter { element -> looksLikeAnnouncementCard(element) }
-            .ifEmpty {
-                doc.select("tr, li, .media, .card, .list-group-item, div")
-                    .toList()
-                    .filter { element -> element.text().length >= 12 }
-                    .filter { element -> looksLikeAnnouncementCard(element) }
-            }
-            .ifEmpty {
-                // Broad fallback: keep likely content containers so sync does not fail silently.
-                doc.select("tr, li, .media, .card, .list-group-item, div, p")
-                    .toList()
-                    .filter { element ->
-                        val text = element.text().trim()
-                        val hasLink = element.select("a[href]").isNotEmpty()
-                        text.length >= 18 && (hasLink || text.split(Regex("\\s+")).size >= 4)
-                    }
-            }
+        val announcements = doc.select(
+            ".elem-info-wrapper, .announcement-item, .media, .list-group-item, .card, tr, li, .panel-body > div"
+        )
+            .toList()
+            .filter { element -> isLikelyAnnouncementEntry(element) }
 
         return announcements.mapNotNull { element ->
             val rawTitle = extractTitle(element)
@@ -55,6 +42,13 @@ class HtmlParser {
     fun isLoginPage(html: String): Boolean {
         if (html.isBlank()) {
             return false
+        }
+
+        val doc = Jsoup.parse(html)
+        val hasPasswordField = doc.select("input[type=password]").isNotEmpty()
+        val hasUsernameField = doc.select("input[name*=user i], input[id*=user i], input[name*=login i], input[id*=login i], input[type=email]").isNotEmpty()
+        if (hasPasswordField && hasUsernameField) {
+            return true
         }
 
         val normalized = html.lowercase()
@@ -185,27 +179,63 @@ class HtmlParser {
             .orEmpty()
     }
 
-    private fun looksLikeAnnouncementCard(element: Element): Boolean {
-        val normalized = element.text().lowercase()
-        if (normalized.length < 12) {
+    private fun isLikelyAnnouncementEntry(element: Element): Boolean {
+        val rawText = element.text().trim()
+        val normalized = rawText.lowercase()
+        if (rawText.isBlank()) {
             return false
         }
-        if (element.select("a[href]").isNotEmpty()) {
-            return true
+        if (isLikelyNavigationOrUtilityText(normalized)) {
+            return false
         }
-        return looksLikeDate(normalized) ||
-            normalized.contains("announcement") ||
-            normalized.contains("timetable") ||
-            normalized.contains("notice") ||
-            normalized.contains("semester") ||
-            normalized.contains("internship") ||
-            normalized.contains("isa") ||
-            normalized.contains("esa") ||
-            normalized.contains("calendar") ||
-            normalized.contains("circular") ||
-            normalized.contains("exam") ||
-            normalized.contains("retest") ||
-            normalized.contains("quiz")
+
+        val wordCount = rawText.split(Regex("\\s+")).size
+        val hasDate = looksLikeDate(rawText)
+        val hasLink = element.select("a[href]").isNotEmpty()
+        val hasSignal = announcementSignals.any { normalized.contains(it) }
+
+        return (wordCount >= 6 && (hasDate || hasSignal)) ||
+            (wordCount >= 10 && hasLink) ||
+            wordCount >= 18
+    }
+
+    private fun isLikelyAnnouncementPage(html: String, baseUrl: String): Boolean {
+        val normalizedUrl = baseUrl.lowercase()
+        val normalizedHtml = html.lowercase()
+        val doc = Jsoup.parse(html, baseUrl)
+        val headingText = doc.select("h1, h2, h3, h4, .page-title, .panel-title, .breadcrumb")
+            .joinToString(" ") { it.text() }
+            .lowercase()
+
+        val urlHint = normalizedUrl.contains("menuid=667") ||
+            normalizedUrl.contains("announcement") ||
+            normalizedUrl.contains("actiontype=5")
+
+        val headingHint = listOf("announcement", "circular", "notice", "notices").any { hint ->
+            headingText.contains(hint)
+        }
+        val bodySignalCount = announcementSignals.count { normalizedHtml.contains(it) }
+        val hasAnnouncementContainers = doc.select(
+            ".elem-info-wrapper, .announcement-item, .announcement, .media, .list-group-item"
+        ).isNotEmpty()
+
+        return urlHint || headingHint || (bodySignalCount >= 3 && hasAnnouncementContainers)
+    }
+
+    private fun isLikelyNavigationOrUtilityText(normalized: String): Boolean {
+        val utilitySignals = listOf(
+            "logout",
+            "sign out",
+            "change password",
+            "welcome",
+            "attendance",
+            "profile",
+            "dashboard",
+            "my courses",
+            "home",
+            "settings"
+        )
+        return utilitySignals.count { normalized.contains(it) } >= 2
     }
 
     private fun looksLikeDate(value: String): Boolean {
@@ -219,5 +249,22 @@ class HtmlParser {
             Regex("""\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\b""")
         )
         return datePatterns.any { it.containsMatchIn(normalized) }
+    }
+
+    companion object {
+        private val announcementSignals = listOf(
+            "announcement",
+            "timetable",
+            "notice",
+            "semester",
+            "internship",
+            "isa",
+            "esa",
+            "calendar",
+            "circular",
+            "exam",
+            "retest",
+            "quiz"
+        )
     }
 }

@@ -36,28 +36,17 @@ class AnnouncementSyncWorker(
                 add(savedUrl)
                 add(canonicalizeAnnouncementUrl(savedUrl))
                 add(PreferencesManager.DEFAULT_BACKEND_URL)
-                add("https://www.pesuacademy.com/Academy/")
-                add("https://www.pesuacademy.com/")
-            }.distinct().toMutableList()
+            }.distinct().filter { isAnnouncementUrl(it) }
 
             var parsedAnnouncements: List<Announcement> = emptyList()
             var successfulUrl: String? = null
             var loginPageDetectedInThisRun = false
 
-            var index = 0
-            while (index < candidateUrls.size) {
-                val candidateUrl = candidateUrls[index]
-                index += 1
+            for (candidateUrl in candidateUrls) {
                 val result = fetchAndParse(url = candidateUrl, cookie = cookie)
                 if (result.isLoginPage) {
                     loginPageDetectedInThisRun = true
                     continue
-                }
-                result.discoveredUrls.forEach { discovered ->
-                    val canonical = canonicalizeAnnouncementUrl(discovered)
-                    if (!candidateUrls.contains(canonical)) {
-                        candidateUrls.add(canonical)
-                    }
                 }
                 if (result.isUnavailablePage) {
                     continue
@@ -79,6 +68,7 @@ class AnnouncementSyncWorker(
                 val hitCount = preferencesManager.incrementLoginPageHitCount()
                 if (hitCount >= maxLoginPageHitsBeforeExpire) {
                     preferencesManager.setLastSyncError("Session refresh needed. Open PESU login once, then refresh.")
+                    notificationHelper.showSessionExpiredNotification()
                     return Result.retry()
                 }
                 preferencesManager.setLastSyncError("Session check pending. Keeping you signed in and retrying.")
@@ -92,7 +82,10 @@ class AnnouncementSyncWorker(
             preferencesManager.saveAnnouncements(parsedAnnouncements)
 
             val relevantAnnouncements = parsedAnnouncements.filter { announcement ->
-                filterManager.shouldShow(announcement.title + "\n" + announcement.fullText)
+                filterManager.shouldShow(
+                    title = announcement.title,
+                    fullText = announcement.fullText
+                )
             }
 
             relevantAnnouncements.forEach { announcement ->
@@ -118,15 +111,15 @@ class AnnouncementSyncWorker(
     }
 
     private fun fetchAndParse(url: String, cookie: String): ParsedFetchResult {
-        val html = fetcher.fetchHtml(url = url, cookie = cookie)
+        val response = fetcher.fetchHtml(url = url, cookie = cookie)
+        val html = response.html
+        val effectiveUrl = response.finalUrl.ifBlank { url }
         val isLoginPage = parser.isLoginPage(html)
         val isUnavailablePage = parser.isUnavailablePage(html)
-        val discoveredUrls = parser.extractAnnouncementUrls(html, url)
-        val parsedAnnouncements = if (isLoginPage || isUnavailablePage) emptyList() else parser.parseAnnouncements(html, url)
+        val parsedAnnouncements = if (isLoginPage || isUnavailablePage) emptyList() else parser.parseAnnouncements(html, effectiveUrl)
         return ParsedFetchResult(
             isLoginPage = isLoginPage,
             isUnavailablePage = isUnavailablePage,
-            discoveredUrls = discoveredUrls,
             announcements = parsedAnnouncements
         )
     }
@@ -146,15 +139,21 @@ class AnnouncementSyncWorker(
             if (menuId.isNullOrBlank()) {
                 PreferencesManager.DEFAULT_BACKEND_URL
             } else {
-                "https://www.pesuacademy.com/Academy/s/studentProfilePESUAdmin?menuId=$menuId"
+                "https://www.pesuacademy.com/Academy/s/studentProfilePESUAdmin?menuId=$menuId&url=studentProfilePESUAdmin&controllerMode=6411&actionType=5&id=0&selectedData=0"
             }
         }.getOrDefault(PreferencesManager.DEFAULT_BACKEND_URL)
+    }
+
+    private fun isAnnouncementUrl(url: String): Boolean {
+        val normalized = url.lowercase()
+        return normalized.startsWith("https://www.pesuacademy.com/") &&
+            normalized.contains("menuid=") &&
+            (normalized.contains("studentprofilepesuadmin") || normalized.contains("actiontype=5"))
     }
 
     private data class ParsedFetchResult(
         val isLoginPage: Boolean,
         val isUnavailablePage: Boolean,
-        val discoveredUrls: List<String>,
         val announcements: List<Announcement>
     )
 }
