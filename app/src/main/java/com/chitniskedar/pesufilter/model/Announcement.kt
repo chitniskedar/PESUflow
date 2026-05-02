@@ -6,5 +6,17 @@ data class Announcement(
     val fullText: String
 ) {
     val stableId: String
-        get() = "$title|$date".lowercase().trim()
+        get() = buildString {
+            append(title.normalizedForId())
+            append("|")
+            append(date.normalizedForId())
+            append("|")
+            append(fullText.normalizedForId().hashCode())
+        }
+
+    private fun String.normalizedForId(): String {
+        return lowercase()
+            .replace(Regex("\\s+"), " ")
+            .trim()
+    }
 }

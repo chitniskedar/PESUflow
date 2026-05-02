@@ -42,7 +42,10 @@ class PreferencesManager(context: Context) {
     }
 
     fun saveAnnouncements(items: List<Announcement>) {
-        prefs.edit().putString(ANNOUNCEMENTS_KEY, toJson(items)).apply()
+        val merged = (items + getSavedAnnouncements())
+            .distinctBy { it.stableId }
+            .take(MAX_SAVED_ANNOUNCEMENTS)
+        prefs.edit().putString(ANNOUNCEMENTS_KEY, toJson(merged)).apply()
     }
 
     fun getSavedAnnouncements(): List<Announcement> {
@@ -172,6 +175,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_BACKEND_URL = "backend_url"
         private const val KEY_BACKEND_COOKIE = "backend_cookie"
         private const val KEY_LOGIN_PAGE_HIT_COUNT = "login_page_hit_count"
+        private const val MAX_SAVED_ANNOUNCEMENTS = 300
         const val DEFAULT_BACKEND_URL = "https://www.pesuacademy.com/Academy/s/studentProfilePESUAdmin?menuId=667&url=studentProfilePESUAdmin&controllerMode=6411&actionType=5&id=0&selectedData=0"
     }
 }
